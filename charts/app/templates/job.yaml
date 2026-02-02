@@ -1,0 +1,157 @@
+{{- range $workload := .Values.spec.workloads }}
+{{- if eq $workload.type "Job" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "app.workloadName" (list $ $workload) }}
+  namespace: {{ $.Values.spec.global.namespace }}
+  labels:
+    {{- include "app.commonLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $workload.name }}
+    {{- with $.Values.spec.global.labels }}
+{{ toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "app.selectorLabels" (list $ $workload) | nindent 8 }}
+        {{- with $.Values.spec.global.labels }}
+{{ toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with $workload.podLabels }}
+{{ toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with $workload.podAnnotations }}
+      annotations:
+{{ toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      restartPolicy: {{ default "OnFailure" $workload.restartPolicy }}
+      {{- if $.Values.spec.global.imagePullSecrets }}
+      imagePullSecrets:
+      {{- range $secret := $.Values.spec.global.imagePullSecrets }}
+      - name: {{ $secret }}
+      {{- end }}
+      {{- end }}
+      {{- $saName := include "app.serviceAccountName" (list $ $workload) }}
+      {{- if $saName }}
+      serviceAccountName: {{ $saName }}
+      {{- end }}
+      {{- if $workload.nodeSelector }}
+      nodeSelector:
+{{ toYaml $workload.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if $workload.tolerations }}
+      tolerations:
+{{ toYaml $workload.tolerations | nindent 8 }}
+      {{- end }}
+      {{- if $workload.affinity }}
+      affinity:
+{{ toYaml $workload.affinity | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: {{ $workload.name }}
+        image: "{{ $workload.image.repository }}:{{ $workload.image.tag }}"
+        imagePullPolicy: {{ default "IfNotPresent" $workload.image.pullPolicy }}
+        {{- if $workload.command }}
+        command:
+{{ toYaml $workload.command | nindent 10 }}
+        {{- end }}
+        {{- if $workload.args }}
+        args:
+{{ toYaml $workload.args | nindent 10 }}
+        {{- end }}
+        {{- if $workload.env }}
+        env:
+        {{- range $env := $workload.env }}
+        - name: {{ $env.name }}
+          {{- if hasKey $env "value" }}
+          value: {{ $env.value | quote }}
+          {{- else if $env.valueFromSecret }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ $env.valueFromSecret.name }}
+              key: {{ $env.valueFromSecret.key }}
+          {{- else if $env.valueFromConfigMap }}
+          valueFrom:
+            configMapKeyRef:
+              name: {{ $env.valueFromConfigMap.name }}
+              key: {{ $env.valueFromConfigMap.key }}
+          {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- if $workload.envFrom }}
+        envFrom:
+{{ toYaml $workload.envFrom | nindent 10 }}
+        {{- end }}
+        {{- $resources := include "app.resolveResources" (list $ $workload) }}
+        {{- if $resources }}
+        resources:
+{{ $resources | nindent 10 }}
+        {{- end }}
+        {{- $hasMounts := or $workload.volumeMounts $workload.csi.enabled }}
+        {{- if $hasMounts }}
+        volumeMounts:
+        {{- range $mount := $workload.volumeMounts }}
+        - name: {{ $mount.name }}
+          mountPath: {{ $mount.mountPath }}
+          {{- if hasKey $mount "subPath" }}
+          subPath: {{ $mount.subPath }}
+          {{- end }}
+          {{- if hasKey $mount "readOnly" }}
+          readOnly: {{ $mount.readOnly }}
+          {{- end }}
+        {{- end }}
+        {{- if $workload.csi.enabled }}
+        - name: {{ include "app.csiVolumeName" (list $ $workload) }}
+          mountPath: {{ $workload.csi.mountPath }}
+          readOnly: {{ default true $workload.csi.readOnly }}
+        {{- end }}
+        {{- end }}
+      {{- $hasVolumes := or $workload.volumes $workload.csi.enabled }}
+      {{- if $hasVolumes }}
+      volumes:
+      {{- range $volume := $workload.volumes }}
+      - name: {{ $volume.name }}
+        {{- if $volume.configMap }}
+        configMap:
+{{ toYaml $volume.configMap | nindent 10 }}
+        {{- end }}
+        {{- if $volume.secret }}
+        secret:
+{{ toYaml $volume.secret | nindent 10 }}
+        {{- end }}
+        {{- if $volume.emptyDir }}
+        emptyDir:
+{{ toYaml $volume.emptyDir | nindent 10 }}
+        {{- end }}
+        {{- if $volume.persistentVolumeClaim }}
+        persistentVolumeClaim:
+{{ toYaml $volume.persistentVolumeClaim | nindent 10 }}
+        {{- end }}
+        {{- if $volume.hostPath }}
+        hostPath:
+{{ toYaml $volume.hostPath | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- if $workload.csi.enabled }}
+      - name: {{ include "app.csiVolumeName" (list $ $workload) }}
+        csi:
+          driver: {{ default "secrets-store.csi.k8s.io" $workload.csi.driver }}
+          readOnly: {{ default true $workload.csi.readOnly }}
+          volumeAttributes:
+            {{- if $workload.csi.secretProviderClass }}
+            secretProviderClass: {{ $workload.csi.secretProviderClass }}
+            {{- end }}
+            {{- range $k, $v := $workload.csi.volumeAttributes }}
+            {{- if ne $k "secretProviderClass" }}
+            {{ $k }}: {{ $v | quote }}
+            {{- end }}
+            {{- end }}
+      {{- end }}
+      {{- end }}
+{{- end }}
+{{- end }}
+

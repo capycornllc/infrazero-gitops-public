@@ -1,17 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: root
+  name: example
   namespace: argocd
 spec:
-  project: default
+  project: cluster-dev
   source:
     repoURL: https://github.com/your-org/your-repo
     targetRevision: main
-    path: clusters/dev
+    path: charts/app
+    helm:
+      valueFiles:
+      - ../../config/app-config.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: example
   syncPolicy:
     automated:
       prune: true

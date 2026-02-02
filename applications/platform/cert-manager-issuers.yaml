@@ -1,22 +1,23 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: root
+  name: cert-manager-issuers
   namespace: argocd
 spec:
-  project: default
+  project: cluster-dev
   source:
     repoURL: https://github.com/your-org/your-repo
     targetRevision: main
-    path: clusters/dev
+    path: platform/cert-manager
+    directory:
+      recurse: false
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: cert-manager
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
     - CreateNamespace=true
-
-
+    - SkipDryRunOnMissingResource=true

@@ -7,6 +7,10 @@ spec:
   description: Cluster resources for dev
   sourceRepos:
   - https://github.com/your-org/your-repo
+  - https://kubernetes.github.io/ingress-nginx
+  - https://charts.jetstack.io
+  - https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
+  - https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts
   destinations:
   - namespace: "*"
     server: https://kubernetes.default.svc

@@ -2,5 +2,11 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
 - ../../projects/test/project.yaml
+- ../../applications/platform/ingress-nginx.yaml
+- ../../applications/platform/cert-manager.yaml
+- ../../applications/platform/cert-manager-issuers.yaml
+- ../../applications/platform/secrets-store-csi.yaml
+- ../../applications/platform/infisical-csi-provider.yaml
+- ../../applications/app/application.yaml
 commonLabels:
   env: test

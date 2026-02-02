@@ -1,22 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: root
+  name: infisical-csi-provider
   namespace: argocd
 spec:
-  project: default
+  project: cluster-dev
   source:
-    repoURL: https://github.com/your-org/your-repo
-    targetRevision: main
-    path: clusters/dev
+    repoURL: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts
+    chart: infisical-csi-provider
+    targetRevision: 0.2.1
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: secrets-store-csi
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
     - CreateNamespace=true
-
-

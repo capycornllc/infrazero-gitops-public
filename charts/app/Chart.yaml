@@ -1,0 +1,7 @@
+apiVersion: v2
+name: app
+description: Infrazero single-app chart rendering workloads from config/app-config.yaml
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+

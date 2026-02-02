@@ -1,0 +1,36 @@
+{{- range $workload := .Values.spec.workloads }}
+{{- if and (eq $workload.type "Deployment") $workload.service $workload.service.enabled $workload.ports }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "app.workloadName" (list $ $workload) }}
+  namespace: {{ $.Values.spec.global.namespace }}
+  labels:
+    {{- include "app.commonLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $workload.name }}
+    {{- with $.Values.spec.global.labels }}
+{{ toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $workload.service.annotations }}
+  annotations:
+{{ toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ default "ClusterIP" $workload.service.type }}
+  selector:
+    {{- include "app.selectorLabels" (list $ $workload) | nindent 4 }}
+  ports:
+  {{- range $port := $workload.ports }}
+  - name: {{ default (printf "port-%d" $port.containerPort) $port.name }}
+    port: {{ default $port.containerPort $port.servicePort }}
+    {{- if $port.name }}
+    targetPort: {{ $port.name }}
+    {{- else }}
+    targetPort: {{ $port.containerPort }}
+    {{- end }}
+    protocol: {{ default "TCP" $port.protocol }}
+  {{- end }}
+{{- end }}
+{{- end }}
+

@@ -1,0 +1,144 @@
+# yaml-language-server: $schema=../schemas/app-config.schema.json
+apiVersion: infrazero.app/v1alpha1
+kind: AppConfig
+metadata:
+  name: example
+spec:
+  schemaVersion: 1
+  bootstrap:
+    repoURL: https://github.com/your-org/your-repo
+    env: dev
+    targetRevision: main
+    argoNamespace: argocd
+  global:
+    name: example
+    namespace: example
+    labels: {}
+    annotations: {}
+    baseDomain: example.com
+    ingressClassName: nginx
+    tls:
+      enabled: true
+      clusterIssuer: letsencrypt-staging
+      secretName: ""
+    imagePullSecrets: []
+    serviceAccount:
+      create: false
+      name: ""
+      annotations: {}
+    resourcePresets:
+      small:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+    networkPolicy:
+      enabled: false
+      ingress: []
+      egress: []
+  workloads:
+  - name: web
+    type: Deployment
+    image:
+      repository: ghcr.io/your-org/web
+      tag: "1.0.0"
+      pullPolicy: IfNotPresent
+    replicas: 2
+    ports:
+    - name: http
+      containerPort: 3000
+      servicePort: 80
+      protocol: TCP
+    service:
+      enabled: true
+      type: ClusterIP
+      annotations: {}
+    ingress:
+      enabled: true
+      className: ""
+      annotations: {}
+      hosts:
+      - host: ""
+        paths:
+        - path: /
+          pathType: Prefix
+          servicePort: 80
+      tls:
+        enabled: true
+        secretName: ""
+    probes:
+      readiness:
+        httpGet:
+          path: /health
+          port: http
+        initialDelaySeconds: 5
+        periodSeconds: 10
+      liveness:
+        httpGet:
+          path: /health
+          port: http
+        initialDelaySeconds: 10
+        periodSeconds: 10
+    resources:
+      preset: small
+      requests: {}
+      limits: {}
+    env:
+    - name: NODE_ENV
+      value: production
+    - name: API_KEY
+      valueFromSecret:
+        name: app-secrets
+        key: apiKey
+    envFrom: []
+    volumes: []
+    volumeMounts: []
+    csi:
+      enabled: false
+      driver: secrets-store.csi.k8s.io
+      secretProviderClass: ""
+      readOnly: true
+      mountPath: /mnt/secrets
+      volumeAttributes: {}
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  - name: nightly
+    type: CronJob
+    schedule: "0 2 * * *"
+    concurrencyPolicy: Forbid
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 1
+    image:
+      repository: ghcr.io/your-org/worker
+      tag: "1.0.0"
+      pullPolicy: IfNotPresent
+    command: ["node", "/app/jobs/nightly.js"]
+    args: []
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    env: []
+    envFrom: []
+    volumes: []
+    volumeMounts: []
+    csi:
+      enabled: false
+      driver: secrets-store.csi.k8s.io
+      secretProviderClass: ""
+      readOnly: true
+      mountPath: /mnt/secrets
+      volumeAttributes: {}
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}

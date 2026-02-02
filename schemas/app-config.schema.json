@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://infrazero.app/schemas/app-config.schema.json",
+  "title": "Infrazero App Config",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": { "type": "string" },
+    "kind": { "type": "string", "const": "AppConfig" },
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["schemaVersion", "bootstrap", "global", "workloads"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "bootstrap": {
+          "type": "object",
+          "required": ["repoURL", "env"],
+          "additionalProperties": false,
+          "properties": {
+            "repoURL": { "type": "string", "minLength": 1 },
+            "env": { "type": "string", "minLength": 1 },
+            "targetRevision": { "type": "string" },
+            "argoNamespace": { "type": "string" }
+          }
+        },
+        "global": {
+          "type": "object",
+          "required": ["name", "namespace", "baseDomain", "tls"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "namespace": { "type": "string", "minLength": 1 },
+            "labels": { "type": "object", "additionalProperties": { "type": "string" } },
+            "annotations": { "type": "object", "additionalProperties": { "type": "string" } },
+            "baseDomain": { "type": "string", "minLength": 1 },
+            "ingressClassName": { "type": "string" },
+            "tls": {
+              "type": "object",
+              "required": ["enabled"],
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "clusterIssuer": { "type": "string" },
+                "secretName": { "type": "string" }
+              }
+            },
+            "imagePullSecrets": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "serviceAccount": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "create": { "type": "boolean" },
+                "name": { "type": "string" },
+                "annotations": { "type": "object", "additionalProperties": { "type": "string" } }
+              }
+            },
+            "resourcePresets": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "requests": { "$ref": "#/definitions/resourceMap" },
+                  "limits": { "$ref": "#/definitions/resourceMap" }
+                }
+              }
+            },
+            "networkPolicy": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "ingress": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+                "egress": { "type": "array", "items": { "type": "object", "additionalProperties": true } }
+              }
+            }
+          }
+        },
+        "workloads": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/workload" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "resourceMap": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag"],
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string", "minLength": 1 },
+        "pullPolicy": { "type": "string" }
+      }
+    },
+    "ports": {
+      "type": "object",
+      "required": ["containerPort"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "containerPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "servicePort": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "protocol": { "type": "string" }
+      }
+    },
+    "envVar": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "value": { "type": "string" },
+        "valueFromSecret": {
+          "type": "object",
+          "required": ["name", "key"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "key": { "type": "string" }
+          }
+        },
+        "valueFromConfigMap": {
+          "type": "object",
+          "required": ["name", "key"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "key": { "type": "string" }
+          }
+        }
+      }
+    },
+    "workload": {
+      "type": "object",
+      "required": ["name", "type", "image"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "enum": ["Deployment", "CronJob", "Job"] },
+        "image": { "$ref": "#/definitions/image" },
+        "replicas": { "type": "integer", "minimum": 0 },
+        "schedule": { "type": "string" },
+        "concurrencyPolicy": { "type": "string" },
+        "successfulJobsHistoryLimit": { "type": "integer" },
+        "failedJobsHistoryLimit": { "type": "integer" },
+        "restartPolicy": { "type": "string" },
+        "command": { "type": "array", "items": { "type": "string" } },
+        "args": { "type": "array", "items": { "type": "string" } },
+        "ports": { "type": "array", "items": { "$ref": "#/definitions/ports" } },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "type": { "type": "string" },
+            "annotations": { "type": "object", "additionalProperties": { "type": "string" } }
+          }
+        },
+        "ingress": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "className": { "type": "string" },
+            "annotations": { "type": "object", "additionalProperties": { "type": "string" } },
+            "hosts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "host": { "type": "string" },
+                  "paths": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "path": { "type": "string" },
+                        "pathType": { "type": "string" },
+                        "servicePort": { "type": "integer", "minimum": 1, "maximum": 65535 }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "tls": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "secretName": { "type": "string" }
+              }
+            }
+          }
+        },
+        "probes": { "type": "object", "additionalProperties": true },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preset": { "type": "string" },
+            "requests": { "$ref": "#/definitions/resourceMap" },
+            "limits": { "$ref": "#/definitions/resourceMap" }
+          }
+        },
+        "env": { "type": "array", "items": { "$ref": "#/definitions/envVar" } },
+        "envFrom": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "volumes": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "volumeMounts": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "csi": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "driver": { "type": "string" },
+            "secretProviderClass": { "type": "string" },
+            "readOnly": { "type": "boolean" },
+            "mountPath": { "type": "string" },
+            "volumeAttributes": { "type": "object", "additionalProperties": { "type": "string" } }
+          }
+        },
+        "podAnnotations": { "type": "object", "additionalProperties": { "type": "string" } },
+        "podLabels": { "type": "object", "additionalProperties": { "type": "string" } },
+        "nodeSelector": { "type": "object", "additionalProperties": { "type": "string" } },
+        "tolerations": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "affinity": { "type": "object", "additionalProperties": true },
+        "serviceAccountName": { "type": "string" }
+      }
+    }
+  }
+}

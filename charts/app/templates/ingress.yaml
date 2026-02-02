@@ -1,0 +1,89 @@
+{{- range $workload := .Values.spec.workloads }}
+{{- if and (eq $workload.type "Deployment") $workload.ingress $workload.ingress.enabled $workload.service $workload.service.enabled $workload.ports }}
+{{- $defaultPort := 80 -}}
+{{- if $workload.ports }}
+  {{- $first := index $workload.ports 0 -}}
+  {{- if $first.servicePort }}
+    {{- $defaultPort = $first.servicePort -}}
+  {{- else }}
+    {{- $defaultPort = $first.containerPort -}}
+  {{- end }}
+{{- end }}
+{{- $tlsEnabled := $.Values.spec.global.tls.enabled -}}
+{{- if and $workload.ingress.tls (hasKey $workload.ingress.tls "enabled") }}
+  {{- $tlsEnabled = $workload.ingress.tls.enabled -}}
+{{- end }}
+{{- $tlsSecret := "" -}}
+{{- if and $workload.ingress.tls $workload.ingress.tls.secretName }}
+  {{- $tlsSecret = $workload.ingress.tls.secretName -}}
+{{- else if $.Values.spec.global.tls.secretName }}
+  {{- $tlsSecret = $.Values.spec.global.tls.secretName -}}
+{{- else }}
+  {{- $tlsSecret = printf "%s-tls" (include "app.workloadName" (list $ $workload)) -}}
+{{- end }}
+{{- $hosts := $workload.ingress.hosts -}}
+{{- if not $hosts }}
+  {{- $hosts = list (dict "host" "" "paths" (list (dict "path" "/" "pathType" "Prefix" "servicePort" $defaultPort))) -}}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "app.workloadName" (list $ $workload) }}
+  namespace: {{ $.Values.spec.global.namespace }}
+  labels:
+    {{- include "app.commonLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $workload.name }}
+    {{- with $.Values.spec.global.labels }}
+{{ toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- if and $tlsEnabled $.Values.spec.global.tls.clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ $.Values.spec.global.tls.clusterIssuer }}
+    {{- end }}
+    {{- with $workload.ingress.annotations }}
+{{ toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- $className := default $.Values.spec.global.ingressClassName $workload.ingress.className }}
+  {{- if $className }}
+  ingressClassName: {{ $className }}
+  {{- end }}
+  rules:
+  {{- range $hostEntry := $hosts }}
+  {{- $host := $hostEntry.host }}
+  {{- if not $host }}
+    {{- $host = printf "%s.%s" $workload.name $.Values.spec.global.baseDomain -}}
+  {{- end }}
+  {{- $paths := $hostEntry.paths }}
+  {{- if not $paths }}
+    {{- $paths = list (dict "path" "/" "pathType" "Prefix" "servicePort" $defaultPort) -}}
+  {{- end }}
+  - host: {{ $host }}
+    http:
+      paths:
+      {{- range $path := $paths }}
+      - path: {{ default "/" $path.path }}
+        pathType: {{ default "Prefix" $path.pathType }}
+        backend:
+          service:
+            name: {{ include "app.workloadName" (list $ $workload) }}
+            port:
+              number: {{ default $defaultPort $path.servicePort }}
+      {{- end }}
+  {{- end }}
+  {{- if $tlsEnabled }}
+  tls:
+  - hosts:
+    {{- range $hostEntry := $hosts }}
+    {{- $host := $hostEntry.host }}
+    {{- if not $host }}
+      {{- $host = printf "%s.%s" $workload.name $.Values.spec.global.baseDomain -}}
+    {{- end }}
+    - {{ $host }}
+    {{- end }}
+    secretName: {{ $tlsSecret }}
+  {{- end }}
+{{- end }}
+{{- end }}
+

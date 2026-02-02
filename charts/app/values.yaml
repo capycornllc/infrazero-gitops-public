@@ -1,0 +1,5 @@
+spec:
+  global:
+    name: app
+    namespace: app
+  workloads: []
