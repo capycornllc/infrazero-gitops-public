@@ -17,7 +17,7 @@ $platformRepos = @(
   "https://kubernetes.github.io/ingress-nginx",
   "https://charts.jetstack.io",
   "https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts",
-  "https://raw.githubusercontent.com/gidoichi/secrets-store-csi-driver-provider-infisical/main/charts"
+  "https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts"
 )
 
 $lines = Get-Content $ConfigPath

@@ -8,7 +8,7 @@ This repository is the public GitOps base. The infra pipeline clones it into a p
 - App name and Kubernetes namespace.
 - Base domain, ingress class name, and TLS issuer settings.
 - deployed_apps array from the UI (id, ghcr_image, fqdn, replica_count, memory_limit, cpu_limit).
-- Optional: per-app ports, image tag, image pull secrets, Infisical connection info, secret mappings.
+- Optional: per-app ports, image tag, image pull secrets, Infisical connection info (infisicalUrl, identityId, projectId, envSlug, caCertificate), secret mappings.
 
 ## Overlay targets (patch or regenerate)
 
@@ -65,12 +65,25 @@ Ensure the environment overlay references the app Application and any platform a
 ### platform/infisical/secretproviderclass.yaml
 Patch the Infisical SecretProviderClass used by workloads:
 - metadata.namespace should match the app namespace.
-- spec.parameters.projectSlug, envSlug, secretsPath, and objects should match the app's Infisical setup.
-- spec.parameters.authSecretName is fixed to `infisical-readonly-token`.
-- spec.parameters.authSecretNamespace is fixed to `kube-system`.
-- The auth secret must include the keys required by the selected Infisical CSI provider.
-  - Current provider expects `client-id` and `client-secret` (Universal Auth).
-  - If your secret only has `host` and `token`, either add the Universal Auth keys or switch to a token-based integration (for example, the Infisical operator).
+- spec.parameters should be set for Kubernetes auth with the official Infisical CSI provider:
+  - infisicalUrl, authMethod, identityId, projectId, envSlug, useDefaultAudience, secrets.
+
+### Kubernetes auth requirements (Infisical)
+- Create a machine identity in Infisical using Kubernetes Auth and record its identityId for the SecretProviderClass.
+- Configure allowed service account names/namespaces (and optional audience) on the identity so only your app workloads can authenticate.
+- Decide on Token Reviewer JWT:
+  - If you provide a Token Reviewer JWT to Infisical, create a service account, bind it to the `system:auth-delegator` ClusterRole, and generate a long‑lived token for the TokenReview API.
+  - If you leave Token Reviewer JWT empty, Infisical uses the client’s own JWT and that client service account must be bound to `system:auth-delegator`.
+- If you use a private/self‑signed TLS cert for your Infisical instance, set `caCertificate` in the SecretProviderClass.
+
+### Kubernetes auth requirements (cluster)
+- Secrets Store CSI driver should be installed with `tokenRequests[0].audience=infisical` for clusters that support custom audiences.
+- For clusters that reject custom audiences, do not set a custom audience and set `useDefaultAudience: "true"` in the SecretProviderClass.
+- SecretProviderClass must be created in the same namespace as the pod that mounts it.
+
+### Notes on the infisical-readonly-token secret
+- Kubernetes auth does not use the `infisical-readonly-token` secret. If you keep this secret for other tooling, it will be ignored by the CSI provider.
+- If you want to store the Infisical host URL in that secret, your infra automation should read it and set `spec.parameters.infisicalUrl` when generating the SecretProviderClass.
 
 ## Additions expected from infra overlay
 These files may be added by the infra overlay when generating the private repo.
