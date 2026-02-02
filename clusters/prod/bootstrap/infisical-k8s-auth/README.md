@@ -37,6 +37,7 @@ kubectl -n infisical-bootstrap logs job/infisical-k8s-auth-bootstrap
 - Computes allowed namespaces and service account names dynamically (excludes kube-system, argocd, kube-public, kube-node-lease).
 - Creates/updates an Infisical machine identity named `k3s-prod-operator` and attaches it to the project.
 - Configures Kubernetes Auth with the cluster API host, CA cert, token reviewer JWT, and allowed lists.
+- Writes a result Secret in kube-system named `infisical-bootstrap-result` with identityId and projectId.
 
 ## Notes
 - Re-run this Job when new namespaces or service accounts are added to update allowlists.

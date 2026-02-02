@@ -31,6 +31,7 @@ data:
     ADMIN_SECRET="infisical-admin-token"
     ORG_SECRET="infisical_organization"
     PROJECT_SECRET="infisical_project_name"
+    RESULT_SECRET="infisical-bootstrap-result"
     
     get_secret_data_key() {
       local secret="$1"
@@ -217,6 +218,23 @@ data:
     else
       fail "Get identity membership failed (status $API_STATUS): $API_BODY"
     fi
+    
+    kubectl -n "$KUBE_SYSTEM_NS" apply -f - <<EOF
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: ${RESULT_SECRET}
+      namespace: ${KUBE_SYSTEM_NS}
+    type: Opaque
+    stringData:
+      identityId: "${IDENTITY_ID}"
+      projectId: "${PROJECT_ID}"
+      projectName: "${PROJECT_NAME}"
+      identityName: "${IDENTITY_NAME}"
+      envName: "${ENV_NAME}"
+    EOF
+    
+    log "Wrote result secret ${RESULT_SECRET}"
     
     payload=$(jq -n --arg kubernetesHost "$KUBE_HOST" --arg caCert "$CA_CERT" --arg tokenReviewerJwt "$TOKEN_REVIEWER_JWT" --arg tokenReviewMode "api" --arg allowedNamespaces "$ALLOWED_NAMESPACES" --arg allowedNames "$ALLOWED_NAMES" '{kubernetesHost:$kubernetesHost, caCert:$caCert, tokenReviewerJwt:$tokenReviewerJwt, tokenReviewMode:$tokenReviewMode, allowedNamespaces:$allowedNamespaces, allowedNames:$allowedNames}')
     

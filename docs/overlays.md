@@ -73,6 +73,7 @@ Run once per cluster to connect k3s to Infisical via Kubernetes Auth.
 - Requires kube-system secrets: infisical-admin-token (host + token), infisical_organization, infisical_project_name.
 - Creates a token reviewer service account and ClusterRoleBinding to system:auth-delegator.
 - Creates/updates the Infisical project, machine identity, and Kubernetes auth config.
+- Writes a kube-system Secret named `infisical-bootstrap-result` with identityId and projectId for automation.
 
 ### Kubernetes auth requirements (Infisical)
 - Create a machine identity in Infisical using Kubernetes Auth and record its identityId for the SecretProviderClass.
