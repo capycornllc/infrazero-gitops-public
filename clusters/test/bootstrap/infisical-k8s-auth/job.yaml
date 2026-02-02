@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: infisical-k8s-auth-bootstrap
+  namespace: infisical-bootstrap
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: infisical-k8s-auth-bootstrap
+    spec:
+      serviceAccountName: infisical-k8s-auth-bootstrap
+      restartPolicy: Never
+      containers:
+      - name: bootstrap
+        image: alpine:3.19
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - apk add --no-cache bash curl jq kubectl coreutils ca-certificates && /bin/bash /scripts/entrypoint.sh
+        env:
+        - name: INFRAZERO_ENV
+          value: test
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+      volumes:
+      - name: scripts
+        configMap:
+          name: infisical-k8s-auth-bootstrap
+          defaultMode: 0755

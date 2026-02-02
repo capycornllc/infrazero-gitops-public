@@ -1,7 +1,7 @@
 # PRD: Public GitOps Base for IaC Autodeploy (k3s + Argo CD)
 
 ## Summary
-Create a public, reusable GitOps base that powers an IaC autodeploy tool. The base repo is cloned into a private GitOps repo by the infra pipeline and customized with overlays/patches. It must deploy containerized web apps to k3s via Argo CD, including ingress, cert-manager, and external secrets integration. App definitions come from a generated config derived from the `deployed_apps` input, and all secrets are sourced from an externally hosted Infisical instance via CSI (no in-cluster secret manager).
+Create a public, reusable GitOps base that powers an IaC autodeploy tool. The base repo is cloned into a private GitOps repo by the infra pipeline and customized with overlays/patches. It must deploy containerized web apps to k3s via Argo CD, including ingress, cert-manager, external secrets integration, and an Infisical Kubernetes Auth bootstrap job. App definitions come from a generated config derived from the `deployed_apps` input, and all secrets are sourced from an externally hosted Infisical instance via CSI or the Infisical Secrets Operator (no in-cluster secret manager).
 
 ## Background and context
 We have a UI, an infra repo, and this public GitOps base repo. The UI sends customer inputs to the infra repo on GitHub, and a GitHub Actions pipeline provisions servers and generates the private GitOps repo by cloning this public base and applying overlays/patches. The pipeline also passes a `deployed_apps` payload (JSON) that lists container images, FQDNs, replica counts, and resource limits. Secrets are managed by a self-hosted Infisical instance outside the cluster and injected via CSI. The public base must remain generic and safe to publish while enabling the infra repo to specialize it per customer.
@@ -15,6 +15,8 @@ We have a UI, an infra repo, and this public GitOps base repo. The UI sends cust
   - Domain names and TLS/Let's Encrypt settings
   - Secret mounts using CSI
 - Support external secret management via an out-of-cluster Infisical instance.
+- Automate Kubernetes Auth registration in Infisical with a GitOps-managed bootstrap Job.
+- Support the Infisical Secrets Operator for syncing secrets into namespaces when needed.
 - Keep platform add-ons (ingress-nginx, cert-manager, secrets-store CSI + Infisical provider) pinned and GitOps-managed.
 - Expose clear overlay/patch points for the infra repo to customize per customer.
 
@@ -76,8 +78,15 @@ The base repo must include a single YAML config file with a clear, versioned sch
 - ingress-nginx: NodePort configuration suitable for k3s without CCM.
 - cert-manager: ClusterIssuers for Let's Encrypt staging and production.
 - secrets-store CSI driver + Infisical provider configured without in-cluster secret manager.
+- Infisical Secrets Operator installed via Helm (optional for consumers, included in base).
 - optional sealed-secrets for small bootstrap secrets (disabled by default in the template).
 - namespaces and baseline network policies (default deny with ingress-nginx exceptions).
+
+### Infisical Kubernetes Auth bootstrap
+- Provide a GitOps-managed Job that connects the cluster to an external Infisical instance.
+- Job inputs are stored as kube-system secrets (admin token, organization ID, project name).
+- Job creates a machine identity, attaches it to the project, and configures Kubernetes Auth.
+- Job computes allowed namespaces and service account names dynamically; rerun to update.
 
 ### CI/CD integration
 - Infra repo pipeline generates config/app-config.yaml and overlays from `deployed_apps`.
@@ -88,6 +97,7 @@ The base repo must include a single YAML config file with a clear, versioned sch
 - Quickstart: clone template, apply root app, then use infra overlays to specialize.
 - Operations: Argo CD access, ingress/TLS setup, and image update flow.
 - Secrets: how to connect to external Infisical and define secret mounts.
+- Bootstrap: how to run the Infisical Kubernetes Auth Job and re-run it.
 - Infra integration: how overlays map `deployed_apps` inputs to app workloads.
 
 ## User journeys
@@ -140,7 +150,14 @@ Stories:
 - As an operator, I can install ingress-nginx with NodePort defaults for k3s.
 - As an operator, I can install cert-manager with staging and prod ClusterIssuers.
 - As an operator, I can install secrets-store CSI and the Infisical provider without in-cluster secret manager.
+- As an operator, I can install the Infisical Secrets Operator and sync secrets into namespaces.
 - As an operator, I can enable baseline network policies and namespaces via GitOps.
+
+### Epic 7: Infisical Kubernetes Auth bootstrap
+Stories:
+- As an operator, I can run a GitOps Job to configure Kubernetes Auth in Infisical.
+- As an automation pipeline, I can supply the required kube-system secrets for bootstrap.
+- As an operator, I can re-run the Job to update allowlists when namespaces change.
 
 ### Epic 4: TLS and domain management
 Stories:

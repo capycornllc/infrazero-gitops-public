@@ -1,0 +1,235 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: infisical-k8s-auth-bootstrap
+  namespace: infisical-bootstrap
+data:
+  entrypoint.sh: |
+    
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    log() {
+      echo "[infisical-k8s-auth] $*" >&2
+    }
+    
+    fail() {
+      log "ERROR: $*"
+      exit 1
+    }
+    
+    require_cmd() {
+      command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
+    }
+    
+    require_cmd kubectl
+    require_cmd curl
+    require_cmd jq
+    require_cmd base64
+    
+    KUBE_SYSTEM_NS="kube-system"
+    ADMIN_SECRET="infisical-admin-token"
+    ORG_SECRET="infisical_organization"
+    PROJECT_SECRET="infisical_project_name"
+    
+    get_secret_data_key() {
+      local secret="$1"
+      local key="$2"
+      kubectl get secret -n "$KUBE_SYSTEM_NS" "$secret" -o json | jq -r --arg key "$key" '.data[$key] // empty'
+    }
+    
+    get_secret_value_key() {
+      local secret="$1"
+      local key="$2"
+      local b64
+      b64=$(get_secret_data_key "$secret" "$key")
+      [ -n "$b64" ] || fail "Secret $secret missing key $key"
+      echo "$b64" | base64 -d
+    }
+    
+    get_secret_value_any() {
+      local secret="$1"
+      local data
+      data=$(kubectl get secret -n "$KUBE_SYSTEM_NS" "$secret" -o json)
+      local key
+      key=$(echo "$data" | jq -r '.data | keys[0] // empty')
+      [ -n "$key" ] || fail "Secret $secret has no data keys"
+      echo "$data" | jq -r --arg key "$key" '.data[$key]' | base64 -d
+    }
+    
+    INFISICAL_HOST=$(get_secret_value_key "$ADMIN_SECRET" "host")
+    INFISICAL_TOKEN=$(get_secret_value_key "$ADMIN_SECRET" "token")
+    INFISICAL_HOST="${INFISICAL_HOST%/}"
+    ORG_ID=$(get_secret_value_any "$ORG_SECRET")
+    PROJECT_NAME=$(get_secret_value_any "$PROJECT_SECRET")
+    
+    [ -n "$ORG_ID" ] || fail "Organization ID is empty"
+    [ -n "$PROJECT_NAME" ] || fail "Project name is empty"
+    
+    ENV_NAME="${INFRAZERO_ENV:-dev}"
+    IDENTITY_NAME="k3s-${ENV_NAME}-operator"
+    
+    KUBE_HOST="https://kubernetes.default.svc"
+    if [ -n "${KUBECONFIG:-}" ]; then
+      KUBE_HOST_FROM_CONFIG=$(kubectl config view --kubeconfig "$KUBECONFIG" -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)
+      if [ -n "$KUBE_HOST_FROM_CONFIG" ]; then
+        KUBE_HOST="$KUBE_HOST_FROM_CONFIG"
+      fi
+    elif [ -n "${KUBERNETES_SERVICE_HOST:-}" ]; then
+      KUBE_HOST="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT:-443}"
+    fi
+    
+    CA_CERT_PATH="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    [ -f "$CA_CERT_PATH" ] || fail "Missing CA cert at $CA_CERT_PATH"
+    CA_CERT=$(cat "$CA_CERT_PATH")
+    
+    mapfile -t namespaces < <(
+      kubectl get ns -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' |
+        grep -vE '^(kube-system|argocd|kube-public|kube-node-lease)$' || true
+    )
+    
+    if [ ${#namespaces[@]} -eq 0 ]; then
+      ALLOWED_NAMESPACES=""
+    else
+      ALLOWED_NAMESPACES=$(printf "%s\n" "${namespaces[@]}" | sort -u | paste -sd, -)
+    fi
+    
+    declare -A sa_names=()
+    if [ ${#namespaces[@]} -gt 0 ]; then
+      for ns in "${namespaces[@]}"; do
+        while IFS= read -r sa; do
+          [ -n "$sa" ] && sa_names["$sa"]=1
+        done < <(kubectl get sa -n "$ns" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' || true)
+      done
+    fi
+    
+    if [ ${#sa_names[@]} -eq 0 ]; then
+      ALLOWED_NAMES=""
+    else
+      ALLOWED_NAMES=$(printf "%s\n" "${!sa_names[@]}" | sort -u | paste -sd, -)
+    fi
+    
+    log "Allowed namespaces: ${ALLOWED_NAMESPACES}"
+    log "Allowed service accounts: ${ALLOWED_NAMES}"
+    
+    REVIEWER_SA="infisical-token-reviewer"
+    REVIEWER_SECRET="infisical-token-reviewer-token"
+    REVIEWER_BINDING="infisical-token-reviewer-auth-delegator"
+    
+    if ! kubectl -n "$KUBE_SYSTEM_NS" get sa "$REVIEWER_SA" >/dev/null 2>&1; then
+      log "Creating token reviewer service account"
+      kubectl -n "$KUBE_SYSTEM_NS" create sa "$REVIEWER_SA"
+    fi
+    
+    if ! kubectl get clusterrolebinding "$REVIEWER_BINDING" >/dev/null 2>&1; then
+      log "Creating token reviewer cluster role binding"
+      kubectl create clusterrolebinding "$REVIEWER_BINDING" --clusterrole=system:auth-delegator --serviceaccount="$KUBE_SYSTEM_NS:$REVIEWER_SA"
+    fi
+    
+    kubectl -n "$KUBE_SYSTEM_NS" apply -f - <<EOF
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: ${REVIEWER_SECRET}
+      namespace: ${KUBE_SYSTEM_NS}
+      annotations:
+        kubernetes.io/service-account.name: "${REVIEWER_SA}"
+    type: kubernetes.io/service-account-token
+    EOF
+    
+    TOKEN_B64=""
+    for i in $(seq 1 30); do
+      TOKEN_B64=$(kubectl -n "$KUBE_SYSTEM_NS" get secret "$REVIEWER_SECRET" -o jsonpath='{.data.token}' 2>/dev/null || true)
+      if [ -n "$TOKEN_B64" ]; then
+        break
+      fi
+      sleep 2
+    done
+    
+    [ -n "$TOKEN_B64" ] || fail "Token reviewer secret not populated"
+    TOKEN_REVIEWER_JWT=$(echo "$TOKEN_B64" | base64 -d)
+    
+    api_call() {
+      local method="$1"
+      local url="$2"
+      local data="${3-}"
+      local tmp
+      tmp=$(mktemp)
+      local status
+      if [ -n "$data" ]; then
+        status=$(curl -sS -o "$tmp" -w "%{http_code}" -X "$method" -H "Authorization: Bearer $INFISICAL_TOKEN" -H "Content-Type: application/json" --data "$data" "$url")
+      else
+        status=$(curl -sS -o "$tmp" -w "%{http_code}" -X "$method" -H "Authorization: Bearer $INFISICAL_TOKEN" "$url")
+      fi
+      API_STATUS="$status"
+      API_BODY=$(cat "$tmp")
+      rm -f "$tmp"
+    }
+    
+    require_success() {
+      local context="$1"
+      if [[ "$API_STATUS" != 2* ]]; then
+        fail "$context failed (status $API_STATUS): $API_BODY"
+      fi
+    }
+    
+    log "Ensuring project exists"
+    api_call GET "$INFISICAL_HOST/api/v1/projects"
+    require_success "List projects"
+    PROJECT_ID=$(echo "$API_BODY" | jq -r --arg name "$PROJECT_NAME" '.projects[] | select(.name==$name) | .id' | head -n 1)
+    if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
+      payload=$(jq -n --arg name "$PROJECT_NAME" '{projectName:$name, type:"secret-manager", template:"default", shouldCreateDefaultEnvs:true}')
+      api_call POST "$INFISICAL_HOST/api/v1/projects" "$payload"
+      require_success "Create project"
+      PROJECT_ID=$(echo "$API_BODY" | jq -r '.project.id')
+    fi
+    
+    [ -n "$PROJECT_ID" ] || fail "Project ID not found"
+    log "Project ID: $PROJECT_ID"
+    
+    log "Ensuring identity exists"
+    api_call GET "$INFISICAL_HOST/api/v1/identities?orgId=$ORG_ID"
+    require_success "List identities"
+    IDENTITY_ID=$(echo "$API_BODY" | jq -r --arg name "$IDENTITY_NAME" '.identities[] | select(.identity.name==$name) | .identityId' | head -n 1)
+    if [ -z "$IDENTITY_ID" ] || [ "$IDENTITY_ID" = "null" ]; then
+      payload=$(jq -n --arg name "$IDENTITY_NAME" --arg org "$ORG_ID" '{name:$name, organizationId:$org, role:"admin", hasDeleteProtection:false}')
+      api_call POST "$INFISICAL_HOST/api/v1/identities" "$payload"
+      require_success "Create identity"
+      IDENTITY_ID=$(echo "$API_BODY" | jq -r '.identity.id')
+    fi
+    
+    [ -n "$IDENTITY_ID" ] || fail "Identity ID not found"
+    log "Identity ID: $IDENTITY_ID"
+    
+    log "Ensuring identity is a project member"
+    api_call GET "$INFISICAL_HOST/api/v1/projects/$PROJECT_ID/memberships/identities/$IDENTITY_ID"
+    if [ "$API_STATUS" = "404" ]; then
+      payload=$(jq -n '{role:"admin"}')
+      api_call POST "$INFISICAL_HOST/api/v1/projects/$PROJECT_ID/memberships/identities/$IDENTITY_ID" "$payload"
+      require_success "Create identity membership"
+    elif [[ "$API_STATUS" == 2* ]]; then
+      has_admin=$(echo "$API_BODY" | jq -r '.identityMembership.roles[]?.role' | grep -x "admin" || true)
+      if [ -z "$has_admin" ]; then
+        payload=$(jq -n '{roles:[{role:"admin", isTemporary:false}]}')
+        api_call PATCH "$INFISICAL_HOST/api/v1/projects/$PROJECT_ID/memberships/identities/$IDENTITY_ID" "$payload"
+        require_success "Update identity membership"
+      fi
+    else
+      fail "Get identity membership failed (status $API_STATUS): $API_BODY"
+    fi
+    
+    payload=$(jq -n --arg kubernetesHost "$KUBE_HOST" --arg caCert "$CA_CERT" --arg tokenReviewerJwt "$TOKEN_REVIEWER_JWT" --arg tokenReviewMode "api" --arg allowedNamespaces "$ALLOWED_NAMESPACES" --arg allowedNames "$ALLOWED_NAMES" '{kubernetesHost:$kubernetesHost, caCert:$caCert, tokenReviewerJwt:$tokenReviewerJwt, tokenReviewMode:$tokenReviewMode, allowedNamespaces:$allowedNamespaces, allowedNames:$allowedNames}')
+    
+    log "Configuring Kubernetes auth"
+    api_call GET "$INFISICAL_HOST/api/v1/auth/kubernetes-auth/identities/$IDENTITY_ID"
+    if [ "$API_STATUS" = "404" ]; then
+      api_call POST "$INFISICAL_HOST/api/v1/auth/kubernetes-auth/identities/$IDENTITY_ID" "$payload"
+      require_success "Attach Kubernetes auth"
+    elif [[ "$API_STATUS" == 2* ]]; then
+      api_call PATCH "$INFISICAL_HOST/api/v1/auth/kubernetes-auth/identities/$IDENTITY_ID" "$payload"
+      require_success "Update Kubernetes auth"
+    else
+      fail "Retrieve Kubernetes auth failed (status $API_STATUS): $API_BODY"
+    fi
+    
+    log "Infisical Kubernetes auth bootstrap complete"
