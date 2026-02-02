@@ -68,7 +68,9 @@ Patch the Infisical SecretProviderClass used by workloads:
 - spec.parameters.projectSlug, envSlug, secretsPath, and objects should match the app's Infisical setup.
 - spec.parameters.authSecretName is fixed to `infisical-readonly-token`.
 - spec.parameters.authSecretNamespace is fixed to `kube-system`.
-- The auth secret should contain `client-id` and `client-secret` keys for Universal Auth.
+- The auth secret must include the keys required by the selected Infisical CSI provider.
+  - Current provider expects `client-id` and `client-secret` (Universal Auth).
+  - If your secret only has `host` and `token`, either add the Universal Auth keys or switch to a token-based integration (for example, the Infisical operator).
 
 ## Additions expected from infra overlay
 These files may be added by the infra overlay when generating the private repo.

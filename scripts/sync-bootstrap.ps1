@@ -93,6 +93,9 @@ if (Test-Path $platformDir) {
       $platformContent = [regex]::Replace($platformContent, '(?m)^(\s*repoURL:\s*).*$', ('$1' + $repoURL))
       $platformContent = [regex]::Replace($platformContent, '(?m)^(\s*targetRevision:\s*).*$', ('$1' + $targetRevision))
     }
+    if ($platformFile.Name -eq "infisical-secretproviderclass.yaml") {
+      $platformContent = Replace-NthCaptureLine -Content $platformContent -Pattern '(?m)^(\s*namespace:\s*).*$' -Index 1 -Value $appNamespace
+    }
     Set-Content -Path $platformFile.FullName -Value $platformContent
   }
 }
