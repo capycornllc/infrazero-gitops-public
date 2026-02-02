@@ -6,9 +6,9 @@ metadata:
 spec:
   project: cluster-dev
   source:
-    repoURL: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts
-    chart: infisical-csi-provider
-    targetRevision: 0.2.1
+    repoURL: https://raw.githubusercontent.com/gidoichi/secrets-store-csi-driver-provider-infisical/main/charts
+    chart: secrets-store-csi-driver-provider-infisical
+    targetRevision: 1.0.23
   destination:
     server: https://kubernetes.default.svc
     namespace: secrets-store-csi

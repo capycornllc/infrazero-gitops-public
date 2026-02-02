@@ -62,9 +62,17 @@ Ensure the environment overlay references the app Application and any platform a
 - Platform add-ons are already included; remove or replace entries only if you change the ingress or secrets stack.
 - Keep the env label in commonLabels.
 
+### platform/infisical/secretproviderclass.yaml
+Patch the Infisical SecretProviderClass used by workloads:
+- metadata.namespace should match the app namespace.
+- spec.parameters.projectSlug, envSlug, secretsPath, and objects should match the app's Infisical setup.
+- spec.parameters.authSecretName is fixed to `infisical-readonly-token`.
+- spec.parameters.authSecretNamespace is fixed to `kube-system`.
+- The auth secret should contain `client-id` and `client-secret` keys for Universal Auth.
+
 ## Additions expected from infra overlay
-These files are still expected to be added by the infra overlay when generating the private repo.
-- SecretProviderClass manifests in the app namespace for Infisical, referenced by spec.workloads[].csi.secretProviderClass.
+These files may be added by the infra overlay when generating the private repo.
+- Additional SecretProviderClass manifests in the app namespace for Infisical, referenced by spec.workloads[].csi.secretProviderClass.
 - Optional image pull secret resources if images are private, and reference them in spec.global.imagePullSecrets.
 
 ## Notes

@@ -17,7 +17,7 @@ $platformRepos = @(
   "https://kubernetes.github.io/ingress-nginx",
   "https://charts.jetstack.io",
   "https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts",
-  "https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts"
+  "https://raw.githubusercontent.com/gidoichi/secrets-store-csi-driver-provider-infisical/main/charts"
 )
 
 $lines = Get-Content $ConfigPath
@@ -89,7 +89,7 @@ if (Test-Path $platformDir) {
     $platformContent = Get-Content $platformFile.FullName -Raw
     $platformContent = [regex]::Replace($platformContent, '(?m)^(\s*project:\s*).*$', ('$1' + "cluster-$envName"))
     $platformContent = Replace-NthCaptureLine -Content $platformContent -Pattern '(?m)^(\s*namespace:\s*).*$' -Index 0 -Value $argoNamespace
-    if ($platformFile.Name -eq "cert-manager-issuers.yaml") {
+    if ($platformFile.Name -in @("cert-manager-issuers.yaml", "infisical-secretproviderclass.yaml")) {
       $platformContent = [regex]::Replace($platformContent, '(?m)^(\s*repoURL:\s*).*$', ('$1' + $repoURL))
       $platformContent = [regex]::Replace($platformContent, '(?m)^(\s*targetRevision:\s*).*$', ('$1' + $targetRevision))
     }

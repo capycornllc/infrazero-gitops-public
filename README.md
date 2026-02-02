@@ -18,5 +18,6 @@ Layout
 - `config/app-config.yaml`: single source of truth for workloads and routing.
 - `charts/app/`: Helm chart renderer for workloads.
 - `platform/cert-manager/cluster-issuers.yaml`: Let's Encrypt ClusterIssuers (staging/prod).
+- `platform/infisical/secretproviderclass.yaml`: Infisical SecretProviderClass template (auth secret in kube-system).
 - `schemas/app-config.schema.json`: config schema.
 - `scripts/`: config validation + bootstrap sync.
