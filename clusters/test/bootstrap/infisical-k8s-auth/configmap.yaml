@@ -32,6 +32,8 @@ data:
     ORG_SECRET="infisical-organization"
     PROJECT_SECRET="infisical-project-name"
     RESULT_SECRET="infisical-bootstrap-result"
+    API_RETRIES="${API_RETRIES:-5}"
+    API_RETRY_DELAY="${API_RETRY_DELAY:-2}"
     
     get_secret_data_key() {
       local secret="$1"
@@ -80,11 +82,16 @@ data:
     INFISICAL_HOST=$(get_secret_value_key "$ADMIN_SECRET" "host")
     INFISICAL_TOKEN=$(get_secret_value_key "$ADMIN_SECRET" "token")
     INFISICAL_HOST="${INFISICAL_HOST%/}"
-    ORG_ID=$(get_secret_value_prefer "$ORG_SECRET" "value" "infisical_organization")
+    ORG_INPUT=$(get_secret_value_prefer "$ORG_SECRET" "value" "infisical_organization")
     PROJECT_NAME=$(get_secret_value_prefer "$PROJECT_SECRET" "value" "infisical_project_name")
     
-    [ -n "$ORG_ID" ] || fail "Organization ID is empty"
+    [ -n "$ORG_INPUT" ] || fail "Organization name or ID is empty"
     [ -n "$PROJECT_NAME" ] || fail "Project name is empty"
+    
+    ORG_FILTER=""
+    if [[ "$ORG_INPUT" =~ ^[0-9a-fA-F-]{36}$ ]]; then
+      ORG_FILTER="$ORG_INPUT"
+    fi
     
     ENV_NAME="${INFRAZERO_ENV:-dev}"
     IDENTITY_NAME="k3s-${ENV_NAME}-operator"
@@ -171,17 +178,37 @@ data:
       local method="$1"
       local url="$2"
       local data="${3-}"
-      local tmp
-      tmp=$(mktemp)
-      local status
-      if [ -n "$data" ]; then
-        status=$(curl -sS -o "$tmp" -w "%{http_code}" -X "$method" -H "Authorization: Bearer $INFISICAL_TOKEN" -H "Content-Type: application/json" --data "$data" "$url")
-      else
-        status=$(curl -sS -o "$tmp" -w "%{http_code}" -X "$method" -H "Authorization: Bearer $INFISICAL_TOKEN" "$url")
-      fi
-      API_STATUS="$status"
-      API_BODY=$(cat "$tmp")
-      rm -f "$tmp"
+      local attempt=1
+      local status=""
+      local tmp=""
+      while true; do
+        tmp=$(mktemp)
+        if [ -n "$data" ]; then
+          status=$(curl -sS -o "$tmp" -w "%{http_code}" -X "$method" -H "Authorization: Bearer $INFISICAL_TOKEN" -H "Content-Type: application/json" --data "$data" "$url")
+        else
+          status=$(curl -sS -o "$tmp" -w "%{http_code}" -X "$method" -H "Authorization: Bearer $INFISICAL_TOKEN" "$url")
+        fi
+        API_STATUS="$status"
+        API_BODY=$(cat "$tmp")
+        rm -f "$tmp"
+    
+        if [[ "$API_STATUS" == 2* ]]; then
+          break
+        fi
+    
+        if [[ "$API_STATUS" == 4* && "$API_STATUS" != "429" ]]; then
+          break
+        fi
+    
+        if [ "$attempt" -ge "$API_RETRIES" ]; then
+          break
+        fi
+    
+        local sleep_for=$((API_RETRY_DELAY * attempt))
+        log "API call failed (status $API_STATUS). Retrying in ${sleep_for}s..."
+        sleep "$sleep_for"
+        attempt=$((attempt + 1))
+      done
     }
     
     require_success() {
@@ -194,15 +221,48 @@ data:
     log "Ensuring project exists"
     api_call GET "$INFISICAL_HOST/api/v1/projects"
     require_success "List projects"
-    PROJECT_ID=$(echo "$API_BODY" | jq -r --arg name "$PROJECT_NAME" '.projects[] | select(.name==$name) | .id' | head -n 1)
+    
+    PROJECT_MATCHES=$(echo "$API_BODY" | jq -c --arg name "$PROJECT_NAME" '.projects[] | select(.name==$name)')
+    if [ -n "$ORG_FILTER" ]; then
+      PROJECT_MATCHES=$(echo "$PROJECT_MATCHES" | jq -c --arg org "$ORG_FILTER" 'select(.orgId==$org)')
+    fi
+    
+    if [ -z "$PROJECT_MATCHES" ]; then
+      MATCH_COUNT=0
+    else
+      MATCH_COUNT=$(printf "%s\n" "$PROJECT_MATCHES" | wc -l | tr -d ' ')
+    fi
+    
+    if [ "$MATCH_COUNT" -gt 1 ]; then
+      fail "Multiple projects named $PROJECT_NAME found. Set infisical-organization to the organization ID."
+    fi
+    
+    PROJECT_ID=""
+    ORG_ID=""
+    if [ "$MATCH_COUNT" -eq 1 ]; then
+      PROJECT_ID=$(echo "$PROJECT_MATCHES" | jq -r '.id')
+      ORG_ID=$(echo "$PROJECT_MATCHES" | jq -r '.orgId')
+    fi
+    
     if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
       payload=$(jq -n --arg name "$PROJECT_NAME" '{projectName:$name, type:"secret-manager", template:"default", shouldCreateDefaultEnvs:true}')
       api_call POST "$INFISICAL_HOST/api/v1/projects" "$payload"
       require_success "Create project"
       PROJECT_ID=$(echo "$API_BODY" | jq -r '.project.id')
+      ORG_ID=$(echo "$API_BODY" | jq -r '.project.orgId')
     fi
     
     [ -n "$PROJECT_ID" ] || fail "Project ID not found"
+    [ -n "$ORG_ID" ] || fail "Organization ID not found"
+    
+    if [ -n "$ORG_FILTER" ] && [ "$ORG_ID" != "$ORG_FILTER" ]; then
+      fail "Project orgId $ORG_ID does not match requested org ID $ORG_FILTER"
+    fi
+    
+    if [ -z "$ORG_FILTER" ]; then
+      log "Using orgId $ORG_ID derived from project lookup/creation."
+    fi
+    
     log "Project ID: $PROJECT_ID"
     
     log "Ensuring identity exists"
@@ -247,6 +307,8 @@ data:
       identityId: "${IDENTITY_ID}"
       projectId: "${PROJECT_ID}"
       projectName: "${PROJECT_NAME}"
+      orgId: "${ORG_ID}"
+      orgInput: "${ORG_INPUT}"
       identityName: "${IDENTITY_NAME}"
       envName: "${ENV_NAME}"
     EOF

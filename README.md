@@ -9,7 +9,7 @@ Bootstrap
 Infisical Kubernetes auth bootstrap
 - Create required kube-system secrets:
   - `infisical-admin-token` with keys `host` and `token` (Infisical admin bearer token)
-  - `infisical-organization` containing the organization ID
+  - `infisical-organization` containing the organization name or ID
   - `infisical-project-name` containing the project name
 - Secret data key can be `value` or the legacy key name (infisical_organization / infisical_project_name).
 - Run once per cluster: `kubectl apply -k clusters/<env>/bootstrap/infisical-k8s-auth`

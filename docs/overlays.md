@@ -70,7 +70,7 @@ Patch the Infisical SecretProviderClass used by workloads:
 
 ### clusters/<env>/bootstrap/infisical-k8s-auth
 Run once per cluster to connect k3s to Infisical via Kubernetes Auth.
-- Requires kube-system secrets: infisical-admin-token (host + token), infisical-organization, infisical-project-name.
+- Requires kube-system secrets: infisical-admin-token (host + token), infisical-organization (name or ID), infisical-project-name.
 - Secret data key can be `value` or the legacy key name (infisical_organization / infisical_project_name).
 - Creates a token reviewer service account and ClusterRoleBinding to system:auth-delegator.
 - Creates/updates the Infisical project, machine identity, and Kubernetes auth config.
