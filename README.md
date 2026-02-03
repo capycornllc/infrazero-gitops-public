@@ -2,7 +2,6 @@
 
 Bootstrap
 - Edit `config/app-config.yaml` (bootstrap repoURL/env, app name/namespace, workloads). `env` should match `dev`, `test`, or `prod`.
-- Run `scripts/sync-bootstrap.ps1` to update Argo CD manifests from config.
 - Apply the root app: `kubectl apply -f apps/root/application.yaml`.
 - Argo CD syncs the selected `clusters/<env>` overlay and the app chart.
 
@@ -32,9 +31,6 @@ Infisical/Kubernetes auth requirements
 - The Job sets Kubernetes Auth `kubernetesHost` from `INFISICAL_KUBERNETES_HOST` when provided (use a URL reachable by the Infisical VM).
 - If your Infisical instance uses a private CA, set `caCertificate` in SecretProviderClass and ensure the bootstrap Job can trust the Infisical host.
 
-Validation
-- `scripts/validate-config.ps1` (requires Python + `pyyaml` + `jsonschema`).
-
 Layout
 - `apps/root/application.yaml`: root Argo CD Application (app-of-apps entrypoint).
 - `clusters/<env>/kustomization.yaml`: environment overlays (dev/test/prod).
@@ -48,4 +44,3 @@ Layout
 - `platform/infisical/secretproviderclass.yaml`: Infisical SecretProviderClass template (Kubernetes auth parameters).
 - `docs/examples/infisicalsecret.yaml`: InfisicalSecret CRD example for the secrets operator.
 - `schemas/app-config.schema.json`: config schema.
-- `scripts/`: config validation + bootstrap sync.

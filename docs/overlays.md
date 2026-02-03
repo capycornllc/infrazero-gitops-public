@@ -103,5 +103,4 @@ These files may be added by the infra overlay when generating the private repo.
 - Optional image pull secret resources if images are private, and reference them in spec.global.imagePullSecrets.
 
 ## Notes
-- scripts/sync-bootstrap.ps1 can update apps/root/application.yaml, applications/app/application.yaml, applications/platform/*.yaml, and projects/*/project.yaml from spec.bootstrap and spec.global values.
-- scripts/validate-config.ps1 validates config/app-config.yaml against schemas/app-config.schema.json.
+- Keep bootstrap metadata (repoURL/env/namespace) consistent across Argo CD Applications and Projects.
