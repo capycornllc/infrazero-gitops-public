@@ -34,6 +34,7 @@ data:
     RESULT_SECRET="infisical-bootstrap-result"
     API_RETRIES="${API_RETRIES:-5}"
     API_RETRY_DELAY="${API_RETRY_DELAY:-2}"
+    ALLOWED_AUDIENCE="${INFISICAL_ALLOWED_AUDIENCE:-infisical}"
     
     get_secret_data_key() {
       local secret="$1"
@@ -87,6 +88,7 @@ data:
     
     [ -n "$ORG_INPUT" ] || fail "Organization name or ID is empty"
     [ -n "$PROJECT_NAME" ] || fail "Project name is empty"
+    [ -n "$ALLOWED_AUDIENCE" ] || fail "Allowed audience is empty"
     
     ORG_FILTER=""
     if [[ "$ORG_INPUT" =~ ^[0-9a-fA-F-]{36}$ ]]; then
@@ -138,6 +140,7 @@ data:
     
     log "Allowed namespaces: ${ALLOWED_NAMESPACES}"
     log "Allowed service accounts: ${ALLOWED_NAMES}"
+    log "Allowed audience: ${ALLOWED_AUDIENCE}"
     
     REVIEWER_SA="infisical-token-reviewer"
     REVIEWER_SECRET="infisical-token-reviewer-token"
@@ -315,7 +318,7 @@ data:
     
     log "Wrote result secret ${RESULT_SECRET}"
     
-    payload=$(jq -n --arg kubernetesHost "$KUBE_HOST" --arg caCert "$CA_CERT" --arg tokenReviewerJwt "$TOKEN_REVIEWER_JWT" --arg tokenReviewMode "api" --arg allowedNamespaces "$ALLOWED_NAMESPACES" --arg allowedNames "$ALLOWED_NAMES" '{kubernetesHost:$kubernetesHost, caCert:$caCert, tokenReviewerJwt:$tokenReviewerJwt, tokenReviewMode:$tokenReviewMode, allowedNamespaces:$allowedNamespaces, allowedNames:$allowedNames}')
+    payload=$(jq -n --arg kubernetesHost "$KUBE_HOST" --arg caCert "$CA_CERT" --arg tokenReviewerJwt "$TOKEN_REVIEWER_JWT" --arg tokenReviewMode "api" --arg allowedNamespaces "$ALLOWED_NAMESPACES" --arg allowedNames "$ALLOWED_NAMES" --arg allowedAudience "$ALLOWED_AUDIENCE" '{kubernetesHost:$kubernetesHost, caCert:$caCert, tokenReviewerJwt:$tokenReviewerJwt, tokenReviewMode:$tokenReviewMode, allowedNamespaces:$allowedNamespaces, allowedNames:$allowedNames, allowedAudience:$allowedAudience}')
     
     log "Configuring Kubernetes auth"
     api_call GET "$INFISICAL_HOST/api/v1/auth/kubernetes-auth/identities/$IDENTITY_ID"

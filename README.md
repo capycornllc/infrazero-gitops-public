@@ -28,6 +28,7 @@ Infisical/Kubernetes auth requirements
 - The Job computes allowed namespaces and service account names from the cluster and applies them to the identity (rerun after changes).
 - Token reviewer JWT is sourced from a long-lived service account token secret created by the Job.
 - The Job writes a kube-system Secret named `infisical-bootstrap-result` containing identityId and projectId for automation.
+- The Job sets Kubernetes Auth `allowedAudience` from `INFISICAL_ALLOWED_AUDIENCE` (defaults to `infisical`).
 - If your Infisical instance uses a private CA, set `caCertificate` in SecretProviderClass and ensure the bootstrap Job can trust the Infisical host.
 
 Validation

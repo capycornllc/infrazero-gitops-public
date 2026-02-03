@@ -39,6 +39,7 @@ kubectl -n infisical-bootstrap logs job/infisical-k8s-auth-bootstrap
 - Creates/updates an Infisical machine identity named `k3s-test-operator` and attaches it to the project.
 - Configures Kubernetes Auth with the cluster API host, CA cert, token reviewer JWT, and allowed lists (expects the token reviewer binding to exist).
 - Writes a result Secret in kube-system named `infisical-bootstrap-result` with identityId and projectId.
+- Kubernetes Auth `allowedAudience` defaults to `infisical` and can be overridden with `INFISICAL_ALLOWED_AUDIENCE`.
 
 ## Notes
 - Re-run this Job when new namespaces or service accounts are added to update allowlists.
