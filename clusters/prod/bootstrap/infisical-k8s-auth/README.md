@@ -40,7 +40,7 @@ kubectl -n infisical-bootstrap logs job/infisical-k8s-auth-bootstrap
 - Configures Kubernetes Auth with the cluster API host, CA cert, token reviewer JWT, and allowed lists (expects the token reviewer binding to exist).
 - Writes a result Secret in kube-system named `infisical-bootstrap-result` with identityId and projectId.
 - Kubernetes Auth `allowedAudience` defaults to `infisical` and can be overridden with `INFISICAL_ALLOWED_AUDIENCE`.
-- Kubernetes Auth `kubernetesHost` defaults to the in-cluster API server URL; override with `INFISICAL_KUBERNETES_HOST` for external Infisical.
+- Kubernetes Auth `kubernetesHost` is taken from the bootstrap ConfigMap `KUBE_HOST`. Patch it to a URL reachable by the Infisical VM (for example `https://k3s.aw.torrf.com:6443`).
 
 ## Notes
 - Re-run this Job when new namespaces or service accounts are added to update allowlists.

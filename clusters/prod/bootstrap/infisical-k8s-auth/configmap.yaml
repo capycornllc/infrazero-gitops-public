@@ -35,6 +35,7 @@ data:
     API_RETRIES="${API_RETRIES:-5}"
     API_RETRY_DELAY="${API_RETRY_DELAY:-2}"
     ALLOWED_AUDIENCE="${INFISICAL_ALLOWED_AUDIENCE:-infisical}"
+    KUBE_HOST="https://kubernetes.default.svc"
     
     get_secret_data_key() {
       local secret="$1"
@@ -97,21 +98,6 @@ data:
     
     ENV_NAME="${INFRAZERO_ENV:-dev}"
     IDENTITY_NAME="k3s-${ENV_NAME}-operator"
-    
-    KUBE_HOST=""
-    if [ -n "${INFISICAL_KUBERNETES_HOST:-}" ]; then
-      KUBE_HOST="$INFISICAL_KUBERNETES_HOST"
-    else
-      KUBE_HOST="https://kubernetes.default.svc"
-      if [ -n "${KUBECONFIG:-}" ]; then
-        KUBE_HOST_FROM_CONFIG=$(kubectl config view --kubeconfig "$KUBECONFIG" -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)
-        if [ -n "$KUBE_HOST_FROM_CONFIG" ]; then
-          KUBE_HOST="$KUBE_HOST_FROM_CONFIG"
-        fi
-      elif [ -n "${KUBERNETES_SERVICE_HOST:-}" ]; then
-        KUBE_HOST="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT:-443}"
-      fi
-    fi
     
     CA_CERT_PATH="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
     [ -f "$CA_CERT_PATH" ] || fail "Missing CA cert at $CA_CERT_PATH"
