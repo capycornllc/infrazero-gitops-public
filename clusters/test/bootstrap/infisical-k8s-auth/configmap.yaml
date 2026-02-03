@@ -98,14 +98,19 @@ data:
     ENV_NAME="${INFRAZERO_ENV:-dev}"
     IDENTITY_NAME="k3s-${ENV_NAME}-operator"
     
-    KUBE_HOST="https://kubernetes.default.svc"
-    if [ -n "${KUBECONFIG:-}" ]; then
-      KUBE_HOST_FROM_CONFIG=$(kubectl config view --kubeconfig "$KUBECONFIG" -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)
-      if [ -n "$KUBE_HOST_FROM_CONFIG" ]; then
-        KUBE_HOST="$KUBE_HOST_FROM_CONFIG"
+    KUBE_HOST=""
+    if [ -n "${INFISICAL_KUBERNETES_HOST:-}" ]; then
+      KUBE_HOST="$INFISICAL_KUBERNETES_HOST"
+    else
+      KUBE_HOST="https://kubernetes.default.svc"
+      if [ -n "${KUBECONFIG:-}" ]; then
+        KUBE_HOST_FROM_CONFIG=$(kubectl config view --kubeconfig "$KUBECONFIG" -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)
+        if [ -n "$KUBE_HOST_FROM_CONFIG" ]; then
+          KUBE_HOST="$KUBE_HOST_FROM_CONFIG"
+        fi
+      elif [ -n "${KUBERNETES_SERVICE_HOST:-}" ]; then
+        KUBE_HOST="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT:-443}"
       fi
-    elif [ -n "${KUBERNETES_SERVICE_HOST:-}" ]; then
-      KUBE_HOST="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT:-443}"
     fi
     
     CA_CERT_PATH="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
@@ -141,6 +146,7 @@ data:
     log "Allowed namespaces: ${ALLOWED_NAMESPACES}"
     log "Allowed service accounts: ${ALLOWED_NAMES}"
     log "Allowed audience: ${ALLOWED_AUDIENCE}"
+    log "Kubernetes host: ${KUBE_HOST}"
     
     REVIEWER_SA="infisical-token-reviewer"
     REVIEWER_SECRET="infisical-token-reviewer-token"

@@ -76,6 +76,7 @@ Run once per cluster to connect k3s to Infisical via Kubernetes Auth.
 - Creates/updates the Infisical project, machine identity, and Kubernetes auth config.
 - Writes a kube-system Secret named `infisical-bootstrap-result` with identityId and projectId for automation.
 - Kubernetes Auth `allowedAudience` defaults to `infisical` and can be overridden with `INFISICAL_ALLOWED_AUDIENCE`.
+- Kubernetes Auth `kubernetesHost` defaults to the in-cluster API server URL; override with `INFISICAL_KUBERNETES_HOST` for external Infisical.
 
 ### Kubernetes auth requirements (Infisical)
 - Create a machine identity in Infisical using Kubernetes Auth and record its identityId for the SecretProviderClass.
