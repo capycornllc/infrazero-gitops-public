@@ -137,13 +137,11 @@ data:
     REVIEWER_BINDING="infisical-token-reviewer-auth-delegator"
     
     if ! kubectl -n "$KUBE_SYSTEM_NS" get sa "$REVIEWER_SA" >/dev/null 2>&1; then
-      log "Creating token reviewer service account"
-      kubectl -n "$KUBE_SYSTEM_NS" create sa "$REVIEWER_SA"
+      fail "Missing service account $KUBE_SYSTEM_NS/$REVIEWER_SA. Apply the bootstrap kustomization with cluster-admin privileges."
     fi
     
     if ! kubectl get clusterrolebinding "$REVIEWER_BINDING" >/dev/null 2>&1; then
-      log "Creating token reviewer cluster role binding"
-      kubectl create clusterrolebinding "$REVIEWER_BINDING" --clusterrole=system:auth-delegator --serviceaccount="$KUBE_SYSTEM_NS:$REVIEWER_SA"
+      fail "Missing ClusterRoleBinding $REVIEWER_BINDING. Apply the bootstrap kustomization with cluster-admin privileges."
     fi
     
     kubectl -n "$KUBE_SYSTEM_NS" apply -f - <<EOF
