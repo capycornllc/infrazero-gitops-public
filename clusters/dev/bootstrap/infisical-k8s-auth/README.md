@@ -4,8 +4,9 @@ This kustomization runs a one-time Job that configures Kubernetes Auth for a mac
 
 ## Required secrets (kube-system)
 - `infisical-admin-token` with keys `host` and `token` (Infisical admin bearer token)
-- `infisical_organization` containing the organization ID
-- `infisical_project_name` containing the project name
+- `infisical-organization` containing the organization ID
+- `infisical-project-name` containing the project name
+- Secret data key can be `value` or the legacy key name (infisical_organization / infisical_project_name).
 
 ## Run
 ```bash

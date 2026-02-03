@@ -9,8 +9,9 @@ Bootstrap
 Infisical Kubernetes auth bootstrap
 - Create required kube-system secrets:
   - `infisical-admin-token` with keys `host` and `token` (Infisical admin bearer token)
-  - `infisical_organization` containing the organization ID
-  - `infisical_project_name` containing the project name
+  - `infisical-organization` containing the organization ID
+  - `infisical-project-name` containing the project name
+- Secret data key can be `value` or the legacy key name (infisical_organization / infisical_project_name).
 - Run once per cluster: `kubectl apply -k clusters/<env>/bootstrap/infisical-k8s-auth`
 - Re-run by deleting the Job: `kubectl -n infisical-bootstrap delete job infisical-k8s-auth-bootstrap`
 - Cloud-init trigger: after k3s is Ready, apply the kustomization and skip if the Job already succeeded.

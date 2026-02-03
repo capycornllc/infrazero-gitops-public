@@ -29,8 +29,8 @@ data:
     
     KUBE_SYSTEM_NS="kube-system"
     ADMIN_SECRET="infisical-admin-token"
-    ORG_SECRET="infisical_organization"
-    PROJECT_SECRET="infisical_project_name"
+    ORG_SECRET="infisical-organization"
+    PROJECT_SECRET="infisical-project-name"
     RESULT_SECRET="infisical-bootstrap-result"
     
     get_secret_data_key() {
@@ -58,11 +58,30 @@ data:
       echo "$data" | jq -r --arg key "$key" '.data[$key]' | base64 -d
     }
     
+    get_secret_value_prefer() {
+      local secret="$1"
+      shift
+      local data
+      data=$(kubectl get secret -n "$KUBE_SYSTEM_NS" "$secret" -o json)
+      local key
+      local b64
+      for key in "$@"; do
+        b64=$(echo "$data" | jq -r --arg key "$key" '.data[$key] // empty')
+        if [ -n "$b64" ] && [ "$b64" != "null" ]; then
+          echo "$b64" | base64 -d
+          return 0
+        fi
+      done
+      key=$(echo "$data" | jq -r '.data | keys[0] // empty')
+      [ -n "$key" ] || fail "Secret $secret has no data keys"
+      echo "$data" | jq -r --arg key "$key" '.data[$key]' | base64 -d
+    }
+    
     INFISICAL_HOST=$(get_secret_value_key "$ADMIN_SECRET" "host")
     INFISICAL_TOKEN=$(get_secret_value_key "$ADMIN_SECRET" "token")
     INFISICAL_HOST="${INFISICAL_HOST%/}"
-    ORG_ID=$(get_secret_value_any "$ORG_SECRET")
-    PROJECT_NAME=$(get_secret_value_any "$PROJECT_SECRET")
+    ORG_ID=$(get_secret_value_prefer "$ORG_SECRET" "value" "infisical_organization")
+    PROJECT_NAME=$(get_secret_value_prefer "$PROJECT_SECRET" "value" "infisical_project_name")
     
     [ -n "$ORG_ID" ] || fail "Organization ID is empty"
     [ -n "$PROJECT_NAME" ] || fail "Project name is empty"
