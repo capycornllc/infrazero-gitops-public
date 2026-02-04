@@ -1,10 +1,10 @@
-apiVersion: argoproj.io/v1alpha1
+﻿apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: cert-manager-issuers
   namespace: argocd
 spec:
-  project: cluster-dev
+  project: cluster-prod
   source:
     repoURL: https://github.com/your-org/your-repo
     targetRevision: main
@@ -21,3 +21,4 @@ spec:
     syncOptions:
     - CreateNamespace=true
     - SkipDryRunOnMissingResource=true
+
