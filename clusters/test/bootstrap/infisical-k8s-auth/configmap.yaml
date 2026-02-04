@@ -96,7 +96,7 @@ data:
       ORG_FILTER="$ORG_INPUT"
     fi
     
-    ENV_NAME="${INFRAZERO_ENV:-dev}"
+    ENV_NAME="${INFRAZERO_ENV:-test}"
     IDENTITY_NAME="k3s-${ENV_NAME}-operator"
     
     CA_CERT_PATH="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
