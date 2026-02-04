@@ -21,7 +21,8 @@ spec:
       enabled: true
       clusterIssuer: letsencrypt-staging
       secretName: ""
-    imagePullSecrets: []
+    imagePullSecrets:
+    - name: ghcr-pull
     serviceAccount:
       create: false
       name: ""
