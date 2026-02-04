@@ -11,4 +11,6 @@ resources:
 - ../../applications/platform/infisical-secretproviderclass.yaml
 - ../../applications/app/application.yaml
 labels:
-  env: test
+- pairs:
+    env: test
+  includeSelectors: true
