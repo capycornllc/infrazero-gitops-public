@@ -89,10 +89,6 @@ spec:
     env:
     - name: NODE_ENV
       value: production
-    - name: API_KEY
-      valueFromSecret:
-        name: app-secrets
-        key: apiKey
     envFrom: []
     volumes: []
     volumeMounts: []
