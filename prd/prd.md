@@ -37,9 +37,9 @@ We have a UI, an infra repo, and this public GitOps base repo. The UI sends cust
 ### Repository structure (template)
 - apps/root/application.yaml: Argo CD app-of-apps bootstrap.
 - clusters/<env>/kustomization.yaml: environment roots (dev/test/prod).
-- projects/<env>/project.yaml: Argo CD projects and repo allowlist.
+- clusters/<env>/project.yaml: Argo CD projects and repo allowlist.
 - platform/: cluster add-ons (ingress-nginx, cert-manager, secrets-store CSI, optional sealed-secrets, namespaces, network policies).
-- applications/app/: single Argo CD Application for the entire web app.
+- clusters/<env>/applications/app/: single Argo CD Application for the entire web app.
 - config/app-config.yaml: generated source of truth for app workloads and routing.
 - charts/app/: custom Helm chart (preferred) or a Kustomize-based renderer that consumes config/app-config.yaml.
 - overlays/: clear, documented patch points for the infra repo to inject customer-specific config.

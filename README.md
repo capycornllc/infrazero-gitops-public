@@ -16,7 +16,7 @@ Infisical Kubernetes auth bootstrap
 - Cloud-init trigger: after k3s is Ready, apply the kustomization and skip if the Job already succeeded.
 
 Infisical secrets operator
-- Argo CD Application: `applications/platform/infisical-secrets-operator.yaml`
+- Argo CD Application: `clusters/<env>/applications/platform/infisical-secrets-operator.yaml`
 - Example InfisicalSecret CRD: `docs/examples/infisicalsecret.yaml`
 - Helm alternative (if you do not use Argo CD): `helm repo add infisical-helm-charts https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts` then `helm install secrets-operator infisical-helm-charts/secrets-operator -n infisical-operator --create-namespace`
 - The example CRD is not applied by default; add it via overlays when needed.
@@ -35,9 +35,9 @@ Layout
 - `apps/root/application.yaml`: root Argo CD Application (app-of-apps entrypoint).
 - `clusters/<env>/kustomization.yaml`: environment overlays (dev/test/prod).
 - `clusters/<env>/bootstrap/infisical-k8s-auth`: Job for Infisical Kubernetes Auth bootstrap.
-- `projects/<env>/project.yaml`: Argo CD Project with repo allowlist.
-- `applications/app/application.yaml`: single Argo CD Application for the app.
-- `applications/platform/*.yaml`: platform add-ons (ingress-nginx, cert-manager, secrets-store CSI, Infisical provider).
+- `clusters/<env>/project.yaml`: Argo CD Project with repo allowlist.
+- `clusters/<env>/applications/app/application.yaml`: single Argo CD Application for the app.
+- `clusters/<env>/applications/platform/*.yaml`: platform add-ons (ingress-nginx, cert-manager, secrets-store CSI, Infisical provider).
 - `config/app-config.yaml`: single source of truth for workloads and routing.
 - `charts/app/`: Helm chart renderer for workloads.
 - `platform/cert-manager/cluster-issuers.yaml`: Let's Encrypt ClusterIssuers (staging/prod).

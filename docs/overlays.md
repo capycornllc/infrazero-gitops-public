@@ -38,7 +38,7 @@ Additional required workload fields that are not in deployed_apps:
 - spec.workloads[].service.enabled and spec.workloads[].ingress.enabled should be true for public apps.
 - spec.workloads[].csi should be enabled when secrets are required, with secretProviderClass set to the name of a SecretProviderClass manifest created by the overlay.
 
-### applications/app/application.yaml
+### clusters/<env>/applications/app/application.yaml
 Patch the Argo CD Application for the app:
 - metadata.name should match the app name.
 - metadata.namespace should be the Argo CD namespace.
@@ -52,7 +52,7 @@ Patch the root Argo CD Application:
 - spec.source.path should be clusters/<env>.
 - spec.destination.namespace should be the Argo CD namespace.
 
-### projects/<env>/project.yaml
+### clusters/<env>/project.yaml
 Patch the Argo CD Project for the selected environment:
 - metadata.name should be cluster-<env>.
 - spec.sourceRepos must include the private GitOps repo URL.
@@ -60,7 +60,7 @@ Patch the Argo CD Project for the selected environment:
 ### clusters/<env>/kustomization.yaml
 Ensure the environment overlay references the app Application and any platform add-ons.
 - Platform add-ons are already included; remove or replace entries only if you change the ingress or secrets stack.
-- Keep the env label in commonLabels.
+- Keep the env label in the `labels` list (pairs.env) with `includeSelectors: true`.
 
 ### platform/infisical/secretproviderclass.yaml
 Patch the Infisical SecretProviderClass used by workloads:
