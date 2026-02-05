@@ -42,6 +42,7 @@ spec:
   workloads:
   - name: web
     type: Deployment
+    secretsFolder: web
     image:
       repository: ghcr.io/your-org/web
       tag: "1.0.0"
@@ -106,6 +107,7 @@ spec:
     affinity: {}
   - name: nightly
     type: CronJob
+    secretsFolder: nightly
     schedule: "0 2 * * *"
     concurrencyPolicy: Forbid
     successfulJobsHistoryLimit: 3

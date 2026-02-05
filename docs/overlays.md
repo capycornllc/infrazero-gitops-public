@@ -37,6 +37,8 @@ Additional required workload fields that are not in deployed_apps:
 - spec.workloads[].ports must include containerPort and servicePort.
 - spec.workloads[].service.enabled and spec.workloads[].ingress.enabled should be true for public apps.
 - spec.workloads[].csi should be enabled when secrets are required, with secretProviderClass set to the name of a SecretProviderClass manifest created by the overlay.
+Optional workload fields:
+- spec.workloads[].secretsFolder: name of the Infisical folder whose secrets should be mounted as files for the workload.
 
 ### clusters/<env>/applications/app/application.yaml
 Patch the Argo CD Application for the app:

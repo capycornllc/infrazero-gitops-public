@@ -229,6 +229,7 @@
         "envFrom": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
         "volumes": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
         "volumeMounts": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "secretsFolder": { "type": "string" },
         "csi": {
           "type": "object",
           "additionalProperties": false,

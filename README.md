@@ -1,7 +1,7 @@
 # infrazero-gitops-public
 
 Bootstrap
-- Edit `config/app-config.yaml` (bootstrap repoURL/env, app name/namespace, workloads). `env` should match `dev`, `test`, or `prod`.
+- Edit `config/app-config.yaml` (bootstrap repoURL/env, app name/namespace, workloads, optional `secretsFolder`). `env` should match `dev`, `test`, or `prod`.
 - Apply the root app: `kubectl apply -f apps/root/application.yaml`.
 - Argo CD syncs the selected `clusters/<env>` overlay and the app chart.
 
