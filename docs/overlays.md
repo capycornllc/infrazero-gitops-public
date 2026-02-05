@@ -40,6 +40,7 @@ Additional required workload fields that are not in deployed_apps:
 Optional workload fields:
 - spec.workloads[].secretsFolder: name of the Infisical folder whose secrets should be mounted as files for the workload.
 - When ingress TLS is enabled, the chart mounts the TLS secret into the pod at `/mnt/tls` with `tls.crt` and `tls.key`.
+- When ingress TLS is enabled and a cluster issuer is set, the chart creates a cert-manager `Certificate` per workload using `ingress.tls.secretName` (or the default `<app>-<workload>-tls`).
 
 ### clusters/<env>/applications/app/application.yaml
 Patch the Argo CD Application for the app:

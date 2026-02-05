@@ -1,0 +1,46 @@
+{{- range $workload := .Values.spec.workloads }}
+{{- if eq $workload.type "Deployment" }}
+{{- $tlsEnabled := $.Values.spec.global.tls.enabled -}}
+{{- if $workload.ingress }}
+  {{- if and $workload.ingress.tls (hasKey $workload.ingress.tls "enabled") }}
+    {{- $tlsEnabled = $workload.ingress.tls.enabled -}}
+  {{- end }}
+{{- end }}
+{{- $emitCert := false -}}
+{{- if and $workload.ingress $workload.ingress.enabled $tlsEnabled $.Values.spec.global.tls.clusterIssuer }}
+  {{- $emitCert = true -}}
+{{- end }}
+{{- if $emitCert }}
+{{- $tlsSecret := include "app.tlsSecretName" (list $ $workload) -}}
+{{- $hosts := $workload.ingress.hosts -}}
+{{- if not $hosts }}
+  {{- $hosts = list (dict "host" "" "paths" (list (dict "path" "/" "pathType" "Prefix"))) -}}
+{{- end }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $tlsSecret }}
+  namespace: {{ $.Values.spec.global.namespace }}
+  labels:
+    {{- include "app.commonLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $workload.name }}
+    {{- with $.Values.spec.global.labels }}
+{{ toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  secretName: {{ $tlsSecret }}
+  issuerRef:
+    name: {{ $.Values.spec.global.tls.clusterIssuer }}
+    kind: ClusterIssuer
+  dnsNames:
+  {{- range $hostEntry := $hosts }}
+  {{- $host := $hostEntry.host }}
+  {{- if not $host }}
+    {{- $host = printf "%s.%s" $workload.name $.Values.spec.global.baseDomain -}}
+  {{- end }}
+  - {{ $host }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
