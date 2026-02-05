@@ -13,14 +13,7 @@
 {{- if and $workload.ingress.tls (hasKey $workload.ingress.tls "enabled") }}
   {{- $tlsEnabled = $workload.ingress.tls.enabled -}}
 {{- end }}
-{{- $tlsSecret := "" -}}
-{{- if and $workload.ingress.tls $workload.ingress.tls.secretName }}
-  {{- $tlsSecret = $workload.ingress.tls.secretName -}}
-{{- else if $.Values.spec.global.tls.secretName }}
-  {{- $tlsSecret = $.Values.spec.global.tls.secretName -}}
-{{- else }}
-  {{- $tlsSecret = printf "%s-tls" (include "app.workloadName" (list $ $workload)) -}}
-{{- end }}
+{{- $tlsSecret := include "app.tlsSecretName" (list $ $workload) -}}
 {{- $hosts := $workload.ingress.hosts -}}
 {{- if not $hosts }}
   {{- $hosts = list (dict "host" "" "paths" (list (dict "path" "/" "pathType" "Prefix" "servicePort" $defaultPort))) -}}

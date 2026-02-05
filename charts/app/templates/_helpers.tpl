@@ -50,6 +50,18 @@ app.kubernetes.io/component: {{ $workload.name }}
 {{- printf "%s-csi" $workload.name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{- define "app.tlsSecretName" -}}
+{{- $root := index . 0 -}}
+{{- $workload := index . 1 -}}
+{{- if and $workload.ingress $workload.ingress.tls $workload.ingress.tls.secretName -}}
+{{- $workload.ingress.tls.secretName -}}
+{{- else if $root.Values.spec.global.tls.secretName -}}
+{{- $root.Values.spec.global.tls.secretName -}}
+{{- else -}}
+{{- printf "%s-tls" (include "app.workloadName" (list $root $workload)) -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "app.resolveResources" -}}
 {{- $root := index . 0 -}}
 {{- $workload := index . 1 -}}

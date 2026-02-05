@@ -39,6 +39,7 @@ Additional required workload fields that are not in deployed_apps:
 - spec.workloads[].csi should be enabled when secrets are required, with secretProviderClass set to the name of a SecretProviderClass manifest created by the overlay.
 Optional workload fields:
 - spec.workloads[].secretsFolder: name of the Infisical folder whose secrets should be mounted as files for the workload.
+- When ingress TLS is enabled, the chart mounts the TLS secret into the pod at `/mnt/tls` with `tls.crt` and `tls.key`.
 
 ### clusters/<env>/applications/app/application.yaml
 Patch the Argo CD Application for the app:

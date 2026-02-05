@@ -1,5 +1,17 @@
 {{- range $workload := .Values.spec.workloads }}
 {{- if eq $workload.type "Job" }}
+{{- $tlsEnabled := $.Values.spec.global.tls.enabled -}}
+{{- if $workload.ingress }}
+  {{- if and $workload.ingress.tls (hasKey $workload.ingress.tls "enabled") }}
+    {{- $tlsEnabled = $workload.ingress.tls.enabled -}}
+  {{- end }}
+{{- end }}
+{{- $tlsMount := false -}}
+{{- if $workload.ingress }}
+  {{- if and $workload.ingress.enabled $tlsEnabled }}
+    {{- $tlsMount = true -}}
+  {{- end }}
+{{- end }}
 ---
 apiVersion: batch/v1
 kind: Job
@@ -91,7 +103,7 @@ spec:
         resources:
 {{ $resources | nindent 10 }}
         {{- end }}
-        {{- $hasMounts := or $workload.volumeMounts $workload.csi.enabled }}
+        {{- $hasMounts := or $workload.volumeMounts $workload.csi.enabled $tlsMount }}
         {{- if $hasMounts }}
         volumeMounts:
         {{- range $mount := $workload.volumeMounts }}
@@ -109,8 +121,13 @@ spec:
           mountPath: {{ $workload.csi.mountPath }}
           readOnly: {{ default true $workload.csi.readOnly }}
         {{- end }}
+        {{- if $tlsMount }}
+        - name: tls-certs
+          mountPath: /mnt/tls
+          readOnly: true
         {{- end }}
-      {{- $hasVolumes := or $workload.volumes $workload.csi.enabled }}
+        {{- end }}
+      {{- $hasVolumes := or $workload.volumes $workload.csi.enabled $tlsMount }}
       {{- if $hasVolumes }}
       volumes:
       {{- range $volume := $workload.volumes }}
@@ -150,6 +167,11 @@ spec:
             {{ $k }}: {{ $v | quote }}
             {{- end }}
             {{- end }}
+      {{- end }}
+      {{- if $tlsMount }}
+      - name: tls-certs
+        secret:
+          secretName: {{ include "app.tlsSecretName" (list $ $workload) }}
       {{- end }}
       {{- end }}
 {{- end }}
