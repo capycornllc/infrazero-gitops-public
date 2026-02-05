@@ -16,7 +16,7 @@ spec:
     labels: {}
     annotations: {}
     baseDomain: example.com
-    ingressClassName: nginx
+    ingressClassName: traefik
     tls:
       enabled: true
       clusterIssuer: letsencrypt-staging
