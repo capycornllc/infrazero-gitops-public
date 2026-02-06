@@ -1,0 +1,17 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+  annotations:
+    # This CRD is provided by k3s. Avoid Argo failing dry-run during bootstrap
+    # if the CRD isn't present yet when Argo applies cluster manifests.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  valuesContent: |-
+    additionalArguments:
+      # Copy the status of this Service into all managed Ingresses.
+      # For NodePort services, Traefik publishes the nodes' ExternalIPs into the Ingress status,
+      # which is enough for ArgoCD to consider Ingress resources healthy.
+      - "--providers.kubernetesingress.ingressendpoint.publishedservice=kube-system/traefik"
+
