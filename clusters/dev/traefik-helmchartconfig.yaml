@@ -9,9 +9,18 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   valuesContent: |-
+    # Ensure an ingress controller pod exists on every node.
+    deployment:
+      kind: DaemonSet
+
+    # Avoid kube-proxy forwarding NodePort/LB traffic to endpoints on other nodes.
+    # This is critical when a node is down and the control-plane can't update endpoints.
+    service:
+      spec:
+        externalTrafficPolicy: Local
+
     additionalArguments:
       # Copy the status of this Service into all managed Ingresses.
       # For NodePort services, Traefik publishes the nodes' ExternalIPs into the Ingress status,
       # which is enough for ArgoCD to consider Ingress resources healthy.
       - "--providers.kubernetesingress.ingressendpoint.publishedservice=kube-system/traefik"
-

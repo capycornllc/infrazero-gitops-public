@@ -12,6 +12,7 @@
     {{- $tlsMount = true -}}
   {{- end }}
 {{- end }}
+{{- $replicas := default 1 $workload.replicas -}}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -29,7 +30,7 @@ metadata:
 {{ toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ default 1 $workload.replicas }}
+  replicas: {{ $replicas }}
   selector:
     matchLabels:
       {{- include "app.selectorLabels" (list $ $workload) | nindent 6 }}
@@ -69,6 +70,15 @@ spec:
       {{- if $workload.affinity }}
       affinity:
 {{ toYaml $workload.affinity | nindent 8 }}
+      {{- end }}
+      {{- if gt (int $replicas) 1 }}
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            {{- include "app.selectorLabels" (list $ $workload) | nindent 12 }}
       {{- end }}
       containers:
       - name: {{ $workload.name }}

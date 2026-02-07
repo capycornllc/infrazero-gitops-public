@@ -7,6 +7,10 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   valuesContent: |-
+    deployment:
+      kind: DaemonSet
+    service:
+      spec:
+        externalTrafficPolicy: Local
     additionalArguments:
       - "--providers.kubernetesingress.ingressendpoint.publishedservice=kube-system/traefik"
-
