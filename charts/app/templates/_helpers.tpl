@@ -1,5 +1,6 @@
 {{- define "app.name" -}}
-{{- default .Values.spec.global.name .Chart.Name | trunc 63 | trimSuffix "-" -}}
+{{- /* Prefer the configured global name; fall back to the chart name. */ -}}
+{{- default .Chart.Name .Values.spec.global.name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{- define "app.fullname" -}}

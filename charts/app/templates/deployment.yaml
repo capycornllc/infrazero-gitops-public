@@ -207,6 +207,6 @@ spec:
           secretName: {{ include "app.tlsSecretName" (list $ $workload) }}
       {{- end }}
       {{- end }}
-{{- end }}
-{{- end }}
+{{ end }}
+{{ end }}
 

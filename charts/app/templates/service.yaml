@@ -29,6 +29,10 @@ spec:
     {{- else }}
     targetPort: {{ $port.containerPort }}
     {{- end }}
+    {{- $svcType := default "ClusterIP" $workload.service.type -}}
+    {{- if and (or (eq $svcType "NodePort") (eq $svcType "LoadBalancer")) (hasKey $port "nodePort") $port.nodePort }}
+    nodePort: {{ $port.nodePort }}
+    {{- end }}
     protocol: {{ default "TCP" $port.protocol }}
   {{- end }}
 {{- end }}
