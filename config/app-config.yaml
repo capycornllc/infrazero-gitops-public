@@ -19,7 +19,7 @@ spec:
     ingressClassName: traefik
     tls:
       enabled: true
-      clusterIssuer: letsencrypt-staging
+      clusterIssuer: letsencrypt-prod
       secretName: ""
     imagePullSecrets:
     - ghcr-pull
