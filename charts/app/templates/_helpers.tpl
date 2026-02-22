@@ -14,7 +14,13 @@
 {{- define "app.workloadName" -}}
 {{- $root := index . 0 -}}
 {{- $workload := index . 1 -}}
-{{- printf "%s-%s" (include "app.fullname" $root) $workload.name | trunc 63 | trimSuffix "-" -}}
+{{- $appName := include "app.fullname" $root -}}
+{{- $workloadName := $workload.name -}}
+{{- if and $workloadName (hasPrefix (printf "%s-" $appName) $workloadName) -}}
+{{- $workloadName | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" $appName $workloadName | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 {{- end -}}
 
 {{- define "app.commonLabels" -}}
@@ -88,6 +94,24 @@ app.kubernetes.io/component: {{ $workload.name }}
 {{- end -}}
 {{- if gt (len $resolved) 0 -}}
 {{- toYaml $resolved -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "app.renderCommand" -}}
+{{- $workload := index . 0 -}}
+{{- $command := $workload.command -}}
+{{- if kindIs "string" $command -}}
+  {{- if ne (trim $command) "" -}}
+command:
+  - sh
+  - -lc
+  - {{ $command | quote }}
+  {{- end -}}
+{{- else if kindIs "slice" $command -}}
+  {{- if gt (len $command) 0 -}}
+command:
+{{ toYaml $command | nindent 2 }}
+  {{- end -}}
 {{- end -}}
 {{- end -}}
 

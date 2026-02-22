@@ -1,0 +1,43 @@
+{
+  "app_name": "demo",
+  "ghcr_image": "ghcr.io/example/demo:1.2.3",
+  "secrets_folder": "demo-default",
+  "workloads": [
+    {
+      "workload_name": "demo-web",
+      "preset": "web",
+      "kind": "Deployment",
+      "expose": true,
+      "fqdn": "demo-web.example.com",
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 3000,
+          "service_port": 80,
+          "protocol": "TCP"
+        }
+      ],
+      "replica_count": 2,
+      "memory_limit": "512Mi",
+      "cpu_limit": "500m",
+      "probes": {
+        "readiness": {
+          "httpGet": {
+            "path": "/healthz",
+            "port": "http"
+          },
+          "initialDelaySeconds": 5,
+          "periodSeconds": 10
+        },
+        "liveness": {
+          "httpGet": {
+            "path": "/healthz",
+            "port": "http"
+          },
+          "initialDelaySeconds": 10,
+          "periodSeconds": 10
+        }
+      }
+    }
+  ]
+}

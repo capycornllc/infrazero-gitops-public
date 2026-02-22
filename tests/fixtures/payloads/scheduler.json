@@ -1,0 +1,17 @@
+{
+  "app_name": "demo",
+  "ghcr_image": "ghcr.io/example/demo:1.2.3",
+  "secrets_folder": "demo-default",
+  "workloads": [
+    {
+      "workload_name": "demo-scheduler",
+      "preset": "scheduler",
+      "kind": "CronJob",
+      "command": "python /app/run_scheduled_task.py",
+      "schedule": "*/15 * * * *",
+      "expose": false,
+      "memory_limit": "192Mi",
+      "cpu_limit": "200m"
+    }
+  ]
+}

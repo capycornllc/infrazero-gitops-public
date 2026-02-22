@@ -164,7 +164,12 @@
         "successfulJobsHistoryLimit": { "type": "integer" },
         "failedJobsHistoryLimit": { "type": "integer" },
         "restartPolicy": { "type": "string" },
-        "command": { "type": "array", "items": { "type": "string" } },
+        "command": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
         "args": { "type": "array", "items": { "type": "string" } },
         "ports": { "type": "array", "items": { "$ref": "#/definitions/ports" } },
         "service": {
@@ -215,7 +220,14 @@
             }
           }
         },
-        "probes": { "type": "object", "additionalProperties": true },
+        "probes": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "readiness": { "type": "object", "additionalProperties": true },
+            "liveness": { "type": "object", "additionalProperties": true }
+          }
+        },
         "resources": {
           "type": "object",
           "additionalProperties": false,
@@ -248,7 +260,21 @@
         "tolerations": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
         "affinity": { "type": "object", "additionalProperties": true },
         "serviceAccountName": { "type": "string" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "CronJob" } } },
+          "then": { "required": ["schedule"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "Deployment" } } },
+          "then": {
+            "properties": {
+              "replicas": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      ]
     }
   }
 }

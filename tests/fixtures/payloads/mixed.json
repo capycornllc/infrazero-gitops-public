@@ -1,0 +1,47 @@
+{
+  "app_name": "demo",
+  "ghcr_image": "ghcr.io/example/demo:1.2.3",
+  "secrets_folder": "demo-default",
+  "workloads": [
+    {
+      "workload_name": "demo-web",
+      "preset": "web",
+      "kind": "Deployment",
+      "expose": true,
+      "fqdn": "demo-web.example.com",
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 3000,
+          "service_port": 80
+        }
+      ],
+      "replica_count": 2,
+      "memory_limit": "512Mi",
+      "cpu_limit": "500m",
+      "secrets_folder": "demo-web"
+    },
+    {
+      "workload_name": "demo-queue",
+      "preset": "queue",
+      "kind": "Deployment",
+      "command": "bundle exec sidekiq",
+      "expose": false,
+      "replica_count": 1,
+      "memory_limit": "256Mi",
+      "cpu_limit": "250m",
+      "secrets_folder": "demo-queue"
+    },
+    {
+      "workload_name": "demo-scheduler",
+      "preset": "scheduler",
+      "kind": "CronJob",
+      "command": "python /app/run_scheduled_task.py",
+      "schedule": "0 * * * *",
+      "expose": false,
+      "memory_limit": "192Mi",
+      "cpu_limit": "200m",
+      "secrets_folder": "demo-scheduler"
+    }
+  ]
+}

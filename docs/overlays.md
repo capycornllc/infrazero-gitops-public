@@ -7,35 +7,45 @@ This repository is the public GitOps base. The infra pipeline clones it into a p
 - Environment name (dev, test, prod) and Argo CD namespace.
 - App name and Kubernetes namespace.
 - Base domain, ingress class name, and TLS issuer settings.
-- deployed_apps array from the UI (id, ghcr_image, fqdn, replica_count, memory_limit, cpu_limit).
+- deployed_apps_json payload from the UI using the new shape:
+  - app-level: app_name, ghcr_image, secrets_folder, workloads[]
+  - workload-level: workload_name, preset, kind, command, schedule, expose, fqdn, ports, probes, replica_count, memory_limit, cpu_limit
 - Optional: per-app ports, image tag, image pull secrets, Infisical connection info (infisicalUrl, identityId, projectId, envSlug, caCertificate), secret mappings.
 
 ## Overlay targets (patch or regenerate)
 
 ### config/app-config.yaml
-Replace the file with a generated config derived from deployed_apps and global settings.
+Replace the file with a generated config derived from deployed_apps_json and global settings.
 
 Required fields to set:
 - spec.bootstrap.repoURL, spec.bootstrap.env, spec.bootstrap.targetRevision, spec.bootstrap.argoNamespace
 - spec.global.name, spec.global.namespace, spec.global.baseDomain
 - spec.global.ingressClassName, spec.global.tls.enabled, spec.global.tls.clusterIssuer
 - spec.global.imagePullSecrets (if needed for private images)
-- spec.workloads[] generated from deployed_apps
+- spec.workloads[] generated from deployed_apps_json.workloads
 
-Mapping guidance for deployed_apps to spec.workloads[]:
-| deployed_apps field | app-config path | notes |
+Mapping guidance for deployed_apps_json to spec.workloads[]:
+| deployed_apps_json field | app-config path | notes |
 | --- | --- | --- |
-| id | spec.workloads[].name | Must be DNS-1123; sanitize if needed. |
-| ghcr_image | spec.workloads[].image.repository | Split tag if present; set image.tag separately. |
-| replica_count | spec.workloads[].replicas | Only for Deployment workloads. |
-| memory_limit | spec.workloads[].resources.limits.memory | Consider setting requests equal to limits if no requests are provided. |
-| cpu_limit | spec.workloads[].resources.limits.cpu | Consider setting requests equal to limits if no requests are provided. |
-| fqdn | spec.workloads[].ingress.hosts[0].host | Enable ingress and TLS for public apps. |
+| app_name | metadata.name / spec.global.name | Single app per AppConfig. |
+| ghcr_image | spec.workloads[].image.repository + image.tag | Split image tag if present. |
+| secrets_folder (app-level) | spec.workloads[].secretsFolder | Use as default; allow per-workload override. |
+| workloads[].workload_name | spec.workloads[].name | Keep passthrough. |
+| workloads[].kind | spec.workloads[].type | `Deployment` or `CronJob`. |
+| workloads[].replica_count | spec.workloads[].replicas | Deployment workloads only. |
+| workloads[].schedule | spec.workloads[].schedule | CronJob workloads only. |
+| workloads[].memory_limit | spec.workloads[].resources.limits.memory | |
+| workloads[].cpu_limit | spec.workloads[].resources.limits.cpu | |
+| workloads[].ports[] | spec.workloads[].ports[] | Deployment workloads that expose HTTP/TCP. |
+| workloads[].expose | spec.workloads[].service.enabled + ingress.enabled | Exposed workloads create Service/Ingress. |
+| workloads[].fqdn | spec.workloads[].ingress.hosts[0].host | Used when ingress is enabled. |
+| workloads[].probes | spec.workloads[].probes | Supports readiness/liveness probes. |
+| workloads[].command | spec.workloads[].command | String command is rendered as `sh -lc "<command>"`. |
 
-Additional required workload fields that are not in deployed_apps:
-- spec.workloads[].type should be Deployment for web apps.
-- spec.workloads[].ports must include containerPort and servicePort.
-- spec.workloads[].service.enabled and spec.workloads[].ingress.enabled should be true for public apps.
+Additional workload guidance:
+- web workloads should be `type: Deployment` with service/ingress enabled and at least one port.
+- queue/internal worker workloads can be `type: Deployment` with service/ingress disabled and zero ports.
+- scheduler workloads should be `type: CronJob` with a schedule and no service/ingress.
 - spec.workloads[].csi should be enabled when secrets are required, with secretProviderClass set to the name of a SecretProviderClass manifest created by the overlay.
 Optional workload fields:
 - spec.workloads[].secretsFolder: name of the Infisical folder whose secrets should be mounted as files for the workload.

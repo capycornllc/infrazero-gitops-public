@@ -4,6 +4,12 @@ Bootstrap
 - Edit `config/app-config.yaml` (bootstrap repoURL/env, app name/namespace, workloads, optional `secretsFolder`). `env` should match `dev`, `test`, or `prod`.
 - Apply the root app: `kubectl apply -f apps/root/application.yaml`.
 - Argo CD syncs the selected `clusters/<env>` overlay and the app chart.
+- Validate config locally: `python scripts/validate_app_config.py --config config/app-config.yaml --schema schemas/app-config.schema.json`.
+
+Payload-driven generation
+- Generate `AppConfig` from `deployed_apps_json` (new shape: app-level fields + workload array):
+  - `python scripts/generate_app_config.py --deployed-apps-json "$DEPLOYED_APPS_JSON" --output .tmp/generated.app-config.yaml --schema schemas/app-config.schema.json --base-domain example.com`
+- The chart accepts workload `command` as either string (rendered via `sh -lc`) or string array.
 
 Infisical Kubernetes auth bootstrap
 - Create required kube-system secrets:

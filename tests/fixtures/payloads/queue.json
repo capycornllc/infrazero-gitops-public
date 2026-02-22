@@ -1,0 +1,17 @@
+{
+  "app_name": "demo",
+  "ghcr_image": "ghcr.io/example/demo:1.2.3",
+  "secrets_folder": "demo-default",
+  "workloads": [
+    {
+      "workload_name": "demo-queue",
+      "preset": "queue",
+      "kind": "Deployment",
+      "command": "bundle exec sidekiq",
+      "expose": false,
+      "replica_count": 1,
+      "memory_limit": "256Mi",
+      "cpu_limit": "250m"
+    }
+  ]
+}

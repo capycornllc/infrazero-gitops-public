@@ -67,9 +67,9 @@ spec:
       - name: {{ $workload.name }}
         image: "{{ $workload.image.repository }}:{{ $workload.image.tag }}"
         imagePullPolicy: {{ default "IfNotPresent" $workload.image.pullPolicy }}
-        {{- if $workload.command }}
-        command:
-{{ toYaml $workload.command | nindent 10 }}
+        {{- $command := include "app.renderCommand" (list $workload) }}
+        {{- if $command }}
+{{ $command | nindent 8 }}
         {{- end }}
         {{- if $workload.args }}
         args:

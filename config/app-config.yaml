@@ -116,7 +116,7 @@ spec:
       repository: ghcr.io/your-org/worker
       tag: "1.0.0"
       pullPolicy: IfNotPresent
-    command: ["node", "/app/jobs/nightly.js"]
+    command: "node /app/jobs/nightly.js"
     args: []
     resources:
       requests:
