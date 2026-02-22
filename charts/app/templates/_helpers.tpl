@@ -57,6 +57,11 @@ app.kubernetes.io/component: {{ $workload.name }}
 {{- printf "%s-csi" $workload.name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{- define "app.dotenvVolumeName" -}}
+{{- $workload := index . 1 -}}
+{{- printf "%s-dotenv" $workload.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{- define "app.tlsSecretName" -}}
 {{- $root := index . 0 -}}
 {{- $workload := index . 1 -}}

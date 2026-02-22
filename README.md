@@ -10,6 +10,8 @@ Payload-driven generation
 - Generate `AppConfig` from `deployed_apps_json` (new shape: app-level fields + workload array):
   - `python scripts/generate_app_config.py --deployed-apps-json "$DEPLOYED_APPS_JSON" --output .tmp/generated.app-config.yaml --schema schemas/app-config.schema.json --base-domain example.com`
 - The chart accepts workload `command` as either string (rendered via `sh -lc`) or string array.
+- When `spec.workloads[].csi.enabled=true`, the chart automatically creates `/app/.env` from mounted secret files (default mount path `/mnt/secrets`) using an init container.
+- Multiline secret values are written as escaped `\n` sequences in `.env`; updates are applied on pod restart.
 
 Infisical Kubernetes auth bootstrap
 - Create required kube-system secrets:

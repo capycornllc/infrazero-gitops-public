@@ -74,6 +74,34 @@ def find_doc(docs: list[dict], kind: str, name: str) -> dict | None:
     return None
 
 
+def find_mount(container: dict, mount_path: str) -> dict | None:
+    for mount in container.get("volumeMounts", []):
+        if mount.get("mountPath") == mount_path:
+            return mount
+    return None
+
+
+def find_csi_volume(pod_spec: dict) -> dict | None:
+    for volume in pod_spec.get("volumes", []):
+        if "csi" in volume:
+            return volume
+    return None
+
+
+def find_volume_by_name(pod_spec: dict, name: str) -> dict | None:
+    for volume in pod_spec.get("volumes", []):
+        if volume.get("name") == name:
+            return volume
+    return None
+
+
+def find_init_container(pod_spec: dict, name: str) -> dict | None:
+    for container in pod_spec.get("initContainers", []):
+        if container.get("name") == name:
+            return container
+    return None
+
+
 class MultiWorkloadRenderingTests(unittest.TestCase):
     maxDiff = None
 
@@ -123,10 +151,26 @@ class MultiWorkloadRenderingTests(unittest.TestCase):
         self.assertEqual(ingress["spec"]["rules"][0]["host"], "demo-web.example.com")
 
         deployment = find_doc(docs, "Deployment", "demo-web")
-        container = deployment["spec"]["template"]["spec"]["containers"][0]
+        pod_spec = deployment["spec"]["template"]["spec"]
+        container = pod_spec["containers"][0]
         self.assertEqual(container["ports"][0]["containerPort"], 3000)
         self.assertIn("readinessProbe", container)
         self.assertIn("livenessProbe", container)
+        self.assertEqual(find_mount(container, "/mnt/secrets")["name"], "demo-web-csi")
+        dotenv_mount = find_mount(container, "/app/.env")
+        self.assertIsNotNone(dotenv_mount)
+        self.assertEqual(dotenv_mount["subPath"], ".env")
+        self.assertEqual(dotenv_mount["name"], "demo-web-dotenv")
+
+        init_container = find_init_container(pod_spec, "dotenv-writer")
+        self.assertIsNotNone(init_container)
+        self.assertEqual(find_mount(init_container, "/mnt/secrets")["name"], "demo-web-csi")
+        self.assertEqual(find_mount(init_container, "/work")["name"], "demo-web-dotenv")
+        self.assertIn("/work/.env", "\n".join(init_container["command"]))
+
+        dotenv_volume = find_volume_by_name(pod_spec, "demo-web-dotenv")
+        self.assertIsNotNone(dotenv_volume)
+        self.assertEqual(dotenv_volume["emptyDir"], {})
 
     def test_queue_deployment_internal_without_service_or_ingress(self) -> None:
         values_file = self.generate_config("queue.json", "queue.generated.yaml")
@@ -137,12 +181,27 @@ class MultiWorkloadRenderingTests(unittest.TestCase):
         self.assertIsNone(find_doc(docs, "Service", "demo-queue"))
         self.assertIsNone(find_doc(docs, "Ingress", "demo-queue"))
 
-        container = deployment["spec"]["template"]["spec"]["containers"][0]
+        pod_spec = deployment["spec"]["template"]["spec"]
+        container = pod_spec["containers"][0]
         self.assertEqual(container["command"], ["sh", "-lc", "bundle exec sidekiq"])
         self.assertNotIn("ports", container)
-        self.assertEqual(container["volumeMounts"][0]["mountPath"], "/mnt/secrets")
-        csi_volume = deployment["spec"]["template"]["spec"]["volumes"][0]["csi"]
+        self.assertEqual(find_mount(container, "/mnt/secrets")["name"], "demo-queue-csi")
+        dotenv_mount = find_mount(container, "/app/.env")
+        self.assertIsNotNone(dotenv_mount)
+        self.assertEqual(dotenv_mount["subPath"], ".env")
+        self.assertEqual(dotenv_mount["name"], "demo-queue-dotenv")
+
+        init_container = find_init_container(pod_spec, "dotenv-writer")
+        self.assertIsNotNone(init_container)
+        self.assertEqual(find_mount(init_container, "/mnt/secrets")["name"], "demo-queue-csi")
+        self.assertEqual(find_mount(init_container, "/work")["name"], "demo-queue-dotenv")
+        self.assertIn("\\n", "\n".join(init_container["command"]))
+
+        csi_volume = find_csi_volume(pod_spec)["csi"]
         self.assertEqual(csi_volume["volumeAttributes"]["secretProviderClass"], "infisical-demo-queue")
+        dotenv_volume = find_volume_by_name(pod_spec, "demo-queue-dotenv")
+        self.assertIsNotNone(dotenv_volume)
+        self.assertEqual(dotenv_volume["emptyDir"], {})
 
     def test_scheduler_cronjob_internal(self) -> None:
         values_file = self.generate_config("scheduler.json", "scheduler.generated.yaml")
@@ -154,15 +213,30 @@ class MultiWorkloadRenderingTests(unittest.TestCase):
         self.assertIsNone(find_doc(docs, "Service", "demo-scheduler"))
         self.assertIsNone(find_doc(docs, "Ingress", "demo-scheduler"))
 
-        container = cronjob["spec"]["jobTemplate"]["spec"]["template"]["spec"]["containers"][0]
+        pod_spec = cronjob["spec"]["jobTemplate"]["spec"]["template"]["spec"]
+        container = pod_spec["containers"][0]
         self.assertEqual(
             container["command"], ["sh", "-lc", "python /app/run_scheduled_task.py"]
         )
-        self.assertEqual(container["volumeMounts"][0]["mountPath"], "/mnt/secrets")
-        csi_volume = cronjob["spec"]["jobTemplate"]["spec"]["template"]["spec"]["volumes"][0]["csi"]
+        self.assertEqual(find_mount(container, "/mnt/secrets")["name"], "demo-scheduler-csi")
+        dotenv_mount = find_mount(container, "/app/.env")
+        self.assertIsNotNone(dotenv_mount)
+        self.assertEqual(dotenv_mount["subPath"], ".env")
+        self.assertEqual(dotenv_mount["name"], "demo-scheduler-dotenv")
+
+        init_container = find_init_container(pod_spec, "dotenv-writer")
+        self.assertIsNotNone(init_container)
+        self.assertEqual(find_mount(init_container, "/mnt/secrets")["name"], "demo-scheduler-csi")
+        self.assertEqual(find_mount(init_container, "/work")["name"], "demo-scheduler-dotenv")
+        self.assertIn("multiline values are escaped as \\n", "\n".join(init_container["command"]))
+
+        csi_volume = find_csi_volume(pod_spec)["csi"]
         self.assertEqual(
             csi_volume["volumeAttributes"]["secretProviderClass"], "infisical-demo-scheduler"
         )
+        dotenv_volume = find_volume_by_name(pod_spec, "demo-scheduler-dotenv")
+        self.assertIsNotNone(dotenv_volume)
+        self.assertEqual(dotenv_volume["emptyDir"], {})
 
     def test_mixed_app_with_web_queue_scheduler(self) -> None:
         values_file = self.generate_config("mixed.json", "mixed.generated.yaml")

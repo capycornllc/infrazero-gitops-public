@@ -12,6 +12,8 @@
     {{- $tlsMount = true -}}
   {{- end }}
 {{- end }}
+{{- $csiMountPath := default "/mnt/secrets" $workload.csi.mountPath -}}
+{{- $dotenvEnabled := $workload.csi.enabled -}}
 {{- $replicas := default 1 $workload.replicas -}}
 ---
 apiVersion: apps/v1
@@ -80,6 +82,37 @@ spec:
           matchLabels:
             {{- include "app.selectorLabels" (list $ $workload) | nindent 12 }}
       {{- end }}
+      {{- if $dotenvEnabled }}
+      initContainers:
+      - name: dotenv-writer
+        image: alpine:3.20
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -ec
+        - |
+          set -eu
+          umask 077
+          SECRETS_DIR={{ $csiMountPath | quote }}
+          OUT_FILE="/work/.env"
+          : > "$OUT_FILE"
+          if [ ! -d "$SECRETS_DIR" ]; then
+            echo "Secrets directory not found: $SECRETS_DIR" >&2
+            exit 1
+          fi
+          # Emit KEY="value" lines; multiline values are escaped as \n.
+          find "$SECRETS_DIR" -maxdepth 1 -type f | LC_ALL=C sort | while IFS= read -r file; do
+            key="$(basename "$file")"
+            escaped="$(sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e ':a;N;$!ba;s/\n/\\n/g' "$file")"
+            printf '%s="%s"\n' "$key" "$escaped" >> "$OUT_FILE"
+          done
+        volumeMounts:
+        - name: {{ include "app.csiVolumeName" (list $ $workload) }}
+          mountPath: {{ $csiMountPath }}
+          readOnly: true
+        - name: {{ include "app.dotenvVolumeName" (list $ $workload) }}
+          mountPath: /work
+      {{- end }}
       containers:
       - name: {{ $workload.name }}
         image: "{{ $workload.image.repository }}:{{ $workload.image.tag }}"
@@ -138,7 +171,7 @@ spec:
 {{ toYaml . | nindent 10 }}
           {{- end }}
         {{- end }}
-        {{- $hasMounts := or $workload.volumeMounts $workload.csi.enabled $tlsMount }}
+        {{- $hasMounts := or $workload.volumeMounts $workload.csi.enabled $tlsMount $dotenvEnabled }}
         {{- if $hasMounts }}
         volumeMounts:
         {{- range $mount := $workload.volumeMounts }}
@@ -153,8 +186,14 @@ spec:
         {{- end }}
         {{- if $workload.csi.enabled }}
         - name: {{ include "app.csiVolumeName" (list $ $workload) }}
-          mountPath: {{ $workload.csi.mountPath }}
+          mountPath: {{ $csiMountPath }}
           readOnly: {{ default true $workload.csi.readOnly }}
+        {{- end }}
+        {{- if $dotenvEnabled }}
+        - name: {{ include "app.dotenvVolumeName" (list $ $workload) }}
+          mountPath: /app/.env
+          subPath: .env
+          readOnly: true
         {{- end }}
         {{- if $tlsMount }}
         - name: tls-certs
@@ -162,7 +201,7 @@ spec:
           readOnly: true
         {{- end }}
         {{- end }}
-      {{- $hasVolumes := or $workload.volumes $workload.csi.enabled $tlsMount }}
+      {{- $hasVolumes := or $workload.volumes $workload.csi.enabled $tlsMount $dotenvEnabled }}
       {{- if $hasVolumes }}
       volumes:
       {{- range $volume := $workload.volumes }}
@@ -202,6 +241,10 @@ spec:
             {{ $k }}: {{ $v | quote }}
             {{- end }}
             {{- end }}
+      {{- end }}
+      {{- if $dotenvEnabled }}
+      - name: {{ include "app.dotenvVolumeName" (list $ $workload) }}
+        emptyDir: {}
       {{- end }}
       {{- if $tlsMount }}
       - name: tls-certs
