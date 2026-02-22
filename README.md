@@ -1,4 +1,4 @@
-# infrazero-gitops-public
+# infrazero-gitops-public...
 
 Bootstrap
 - Edit `config/app-config.yaml` (bootstrap repoURL/env, app name/namespace, workloads, optional `secretsFolder`). `env` should match `dev`, `test`, or `prod`.
