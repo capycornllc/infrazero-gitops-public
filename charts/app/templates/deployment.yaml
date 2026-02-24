@@ -1,17 +1,5 @@
 {{- range $workload := .Values.spec.workloads }}
 {{- if eq $workload.type "Deployment" }}
-{{- $tlsEnabled := $.Values.spec.global.tls.enabled -}}
-{{- if $workload.ingress }}
-  {{- if and $workload.ingress.tls (hasKey $workload.ingress.tls "enabled") }}
-    {{- $tlsEnabled = $workload.ingress.tls.enabled -}}
-  {{- end }}
-{{- end }}
-{{- $tlsMount := false -}}
-{{- if $workload.ingress }}
-  {{- if and $workload.ingress.enabled $tlsEnabled }}
-    {{- $tlsMount = true -}}
-  {{- end }}
-{{- end }}
 {{- $csiMountPath := default "/mnt/secrets" $workload.csi.mountPath -}}
 {{- $dotenvEnabled := $workload.csi.enabled -}}
 {{- $replicas := default 1 $workload.replicas -}}
@@ -69,9 +57,25 @@ spec:
       tolerations:
 {{ toYaml $workload.tolerations | nindent 8 }}
       {{- end }}
-      {{- if $workload.affinity }}
+      {{- $selectorLabels := dict
+            "app.kubernetes.io/name" (include "app.name" $)
+            "app.kubernetes.io/instance" $.Release.Name
+            "app.kubernetes.io/component" $workload.name
+      -}}
+      {{- $affinity := deepCopy (default (dict) $workload.affinity) -}}
+      {{- if gt (int $replicas) 1 }}
+      {{- $requiredNodeTerm := dict
+            "topologyKey" "kubernetes.io/hostname"
+            "labelSelector" (dict "matchLabels" $selectorLabels)
+      -}}
+      {{- $podAntiAffinity := deepCopy (default (dict) (index $affinity "podAntiAffinity")) -}}
+      {{- $requiredTerms := concat (default (list) (index $podAntiAffinity "requiredDuringSchedulingIgnoredDuringExecution")) (list $requiredNodeTerm) -}}
+      {{- $_ := set $podAntiAffinity "requiredDuringSchedulingIgnoredDuringExecution" $requiredTerms -}}
+      {{- $_ := set $affinity "podAntiAffinity" $podAntiAffinity -}}
+      {{- end }}
+      {{- if gt (len $affinity) 0 }}
       affinity:
-{{ toYaml $workload.affinity | nindent 8 }}
+{{ toYaml $affinity | nindent 8 }}
       {{- end }}
       {{- if gt (int $replicas) 1 }}
       topologySpreadConstraints:
@@ -171,7 +175,7 @@ spec:
 {{ toYaml . | nindent 10 }}
           {{- end }}
         {{- end }}
-        {{- $hasMounts := or $workload.volumeMounts $workload.csi.enabled $tlsMount $dotenvEnabled }}
+        {{- $hasMounts := or $workload.volumeMounts $workload.csi.enabled $dotenvEnabled }}
         {{- if $hasMounts }}
         volumeMounts:
         {{- range $mount := $workload.volumeMounts }}
@@ -195,13 +199,8 @@ spec:
           subPath: .env
           readOnly: true
         {{- end }}
-        {{- if $tlsMount }}
-        - name: tls-certs
-          mountPath: /mnt/tls
-          readOnly: true
         {{- end }}
-        {{- end }}
-      {{- $hasVolumes := or $workload.volumes $workload.csi.enabled $tlsMount $dotenvEnabled }}
+      {{- $hasVolumes := or $workload.volumes $workload.csi.enabled $dotenvEnabled }}
       {{- if $hasVolumes }}
       volumes:
       {{- range $volume := $workload.volumes }}
@@ -245,11 +244,6 @@ spec:
       {{- if $dotenvEnabled }}
       - name: {{ include "app.dotenvVolumeName" (list $ $workload) }}
         emptyDir: {}
-      {{- end }}
-      {{- if $tlsMount }}
-      - name: tls-certs
-        secret:
-          secretName: {{ include "app.tlsSecretName" (list $ $workload) }}
       {{- end }}
       {{- end }}
 {{ end }}

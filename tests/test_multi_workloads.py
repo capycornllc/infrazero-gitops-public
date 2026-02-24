@@ -161,12 +161,29 @@ class MultiWorkloadRenderingTests(unittest.TestCase):
         self.assertIsNotNone(dotenv_mount)
         self.assertEqual(dotenv_mount["subPath"], ".env")
         self.assertEqual(dotenv_mount["name"], "demo-web-dotenv")
+        self.assertIsNone(find_mount(container, "/mnt/tls"))
+        self.assertIsNone(find_volume_by_name(pod_spec, "tls-certs"))
 
         init_container = find_init_container(pod_spec, "dotenv-writer")
         self.assertIsNotNone(init_container)
         self.assertEqual(find_mount(init_container, "/mnt/secrets")["name"], "demo-web-csi")
         self.assertEqual(find_mount(init_container, "/work")["name"], "demo-web-dotenv")
         self.assertIn("/work/.env", "\n".join(init_container["command"]))
+        required_terms = (
+            pod_spec.get("affinity", {})
+            .get("podAntiAffinity", {})
+            .get("requiredDuringSchedulingIgnoredDuringExecution", [])
+        )
+        self.assertTrue(required_terms)
+        self.assertEqual(required_terms[-1]["topologyKey"], "kubernetes.io/hostname")
+        self.assertEqual(
+            required_terms[-1]["labelSelector"]["matchLabels"]["app.kubernetes.io/component"],
+            "demo-web",
+        )
+        spread_constraints = pod_spec.get("topologySpreadConstraints", [])
+        self.assertEqual(len(spread_constraints), 1)
+        self.assertEqual(spread_constraints[0]["topologyKey"], "kubernetes.io/hostname")
+        self.assertEqual(spread_constraints[0]["whenUnsatisfiable"], "DoNotSchedule")
 
         dotenv_volume = find_volume_by_name(pod_spec, "demo-web-dotenv")
         self.assertIsNotNone(dotenv_volume)
@@ -196,6 +213,13 @@ class MultiWorkloadRenderingTests(unittest.TestCase):
         self.assertEqual(find_mount(init_container, "/mnt/secrets")["name"], "demo-queue-csi")
         self.assertEqual(find_mount(init_container, "/work")["name"], "demo-queue-dotenv")
         self.assertIn("\\n", "\n".join(init_container["command"]))
+        self.assertNotIn("topologySpreadConstraints", pod_spec)
+        required_terms = (
+            pod_spec.get("affinity", {})
+            .get("podAntiAffinity", {})
+            .get("requiredDuringSchedulingIgnoredDuringExecution", [])
+        )
+        self.assertEqual(required_terms, [])
 
         csi_volume = find_csi_volume(pod_spec)["csi"]
         self.assertEqual(csi_volume["volumeAttributes"]["secretProviderClass"], "infisical-demo-queue")
