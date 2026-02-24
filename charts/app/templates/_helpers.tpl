@@ -24,18 +24,18 @@
 {{- end -}}
 
 {{- define "app.commonLabels" -}}
-app.kubernetes.io/name: {{ include "app.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
-app.kubernetes.io/part-of: {{ include "app.name" . }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/name: {{ include "app.name" . | quote }}
+app.kubernetes.io/instance: {{ .Release.Name | quote }}
+app.kubernetes.io/part-of: {{ include "app.name" . | quote }}
+app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
 {{- end -}}
 
 {{- define "app.selectorLabels" -}}
 {{- $root := index . 0 -}}
 {{- $workload := index . 1 -}}
-app.kubernetes.io/name: {{ include "app.name" $root }}
-app.kubernetes.io/instance: {{ $root.Release.Name }}
-app.kubernetes.io/component: {{ $workload.name }}
+app.kubernetes.io/name: {{ include "app.name" $root | quote }}
+app.kubernetes.io/instance: {{ $root.Release.Name | quote }}
+app.kubernetes.io/component: {{ $workload.name | quote }}
 {{- end -}}
 
 {{- define "app.serviceAccountName" -}}

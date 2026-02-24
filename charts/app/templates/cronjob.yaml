@@ -6,18 +6,18 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "app.workloadName" (list $ $workload) }}
-  namespace: {{ $.Values.spec.global.namespace }}
+  name: {{ include "app.workloadName" (list $ $workload) | quote }}
+  namespace: {{ $.Values.spec.global.namespace | quote }}
   labels:
     {{- include "app.commonLabels" $ | nindent 4 }}
-    app.kubernetes.io/component: {{ $workload.name }}
+    app.kubernetes.io/component: {{ $workload.name | quote }}
     {{- with $.Values.spec.global.labels }}
 {{ toYaml . | nindent 4 }}
     {{- end }}
 spec:
   schedule: {{ $workload.schedule | quote }}
   {{- if $workload.concurrencyPolicy }}
-  concurrencyPolicy: {{ $workload.concurrencyPolicy }}
+  concurrencyPolicy: {{ $workload.concurrencyPolicy | quote }}
   {{- end }}
   {{- if hasKey $workload "successfulJobsHistoryLimit" }}
   successfulJobsHistoryLimit: {{ $workload.successfulJobsHistoryLimit }}
@@ -48,16 +48,16 @@ spec:
 {{ toYaml . | nindent 12 }}
           {{- end }}
         spec:
-          restartPolicy: {{ default "OnFailure" $workload.restartPolicy }}
+          restartPolicy: {{ default "OnFailure" $workload.restartPolicy | quote }}
           {{- if $.Values.spec.global.imagePullSecrets }}
           imagePullSecrets:
           {{- range $secret := $.Values.spec.global.imagePullSecrets }}
-          - name: {{ $secret }}
+          - name: {{ $secret | quote }}
           {{- end }}
           {{- end }}
           {{- $saName := include "app.serviceAccountName" (list $ $workload) }}
           {{- if $saName }}
-          serviceAccountName: {{ $saName }}
+          serviceAccountName: {{ $saName | quote }}
           {{- end }}
           {{- if $workload.nodeSelector }}
           nodeSelector:
@@ -96,14 +96,14 @@ spec:
                 printf '%s="%s"\n' "$key" "$escaped" >> "$OUT_FILE"
               done
             volumeMounts:
-            - name: {{ include "app.csiVolumeName" (list $ $workload) }}
+            - name: {{ include "app.csiVolumeName" (list $ $workload) | quote }}
               mountPath: {{ $csiMountPath | quote }}
               readOnly: true
-            - name: {{ include "app.dotenvVolumeName" (list $ $workload) }}
+            - name: {{ include "app.dotenvVolumeName" (list $ $workload) | quote }}
               mountPath: /work
           {{- end }}
           containers:
-          - name: {{ $workload.name }}
+          - name: {{ $workload.name | quote }}
             image: "{{ $workload.image.repository }}:{{ $workload.image.tag }}"
             imagePullPolicy: {{ default "IfNotPresent" $workload.image.pullPolicy }}
             {{- $command := include "app.renderCommand" (list $workload) }}
@@ -117,19 +117,19 @@ spec:
             {{- if $workload.env }}
             env:
             {{- range $env := $workload.env }}
-            - name: {{ $env.name }}
+            - name: {{ $env.name | quote }}
               {{- if hasKey $env "value" }}
               value: {{ $env.value | quote }}
               {{- else if $env.valueFromSecret }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ $env.valueFromSecret.name }}
-                  key: {{ $env.valueFromSecret.key }}
+                  name: {{ $env.valueFromSecret.name | quote }}
+                  key: {{ $env.valueFromSecret.key | quote }}
               {{- else if $env.valueFromConfigMap }}
               valueFrom:
                 configMapKeyRef:
-                  name: {{ $env.valueFromConfigMap.name }}
-                  key: {{ $env.valueFromConfigMap.key }}
+                  name: {{ $env.valueFromConfigMap.name | quote }}
+                  key: {{ $env.valueFromConfigMap.key | quote }}
               {{- end }}
             {{- end }}
             {{- end }}
@@ -146,7 +146,7 @@ spec:
             {{- if $hasMounts }}
             volumeMounts:
             {{- range $mount := $workload.volumeMounts }}
-            - name: {{ $mount.name }}
+            - name: {{ $mount.name | quote }}
               mountPath: {{ $mount.mountPath | quote }}
               {{- if hasKey $mount "subPath" }}
               subPath: {{ $mount.subPath | quote }}
@@ -156,12 +156,12 @@ spec:
               {{- end }}
             {{- end }}
             {{- if $workload.csi.enabled }}
-            - name: {{ include "app.csiVolumeName" (list $ $workload) }}
+            - name: {{ include "app.csiVolumeName" (list $ $workload) | quote }}
               mountPath: {{ $csiMountPath | quote }}
               readOnly: {{ default true $workload.csi.readOnly }}
             {{- end }}
             {{- if $dotenvEnabled }}
-            - name: {{ include "app.dotenvVolumeName" (list $ $workload) }}
+            - name: {{ include "app.dotenvVolumeName" (list $ $workload) | quote }}
               mountPath: /app/.env
               subPath: .env
               readOnly: true
@@ -171,7 +171,7 @@ spec:
           {{- if $hasVolumes }}
           volumes:
           {{- range $volume := $workload.volumes }}
-          - name: {{ $volume.name }}
+          - name: {{ $volume.name | quote }}
             {{- if $volume.configMap }}
             configMap:
 {{ toYaml $volume.configMap | nindent 14 }}
@@ -194,7 +194,7 @@ spec:
             {{- end }}
           {{- end }}
           {{- if $workload.csi.enabled }}
-          - name: {{ include "app.csiVolumeName" (list $ $workload) }}
+          - name: {{ include "app.csiVolumeName" (list $ $workload) | quote }}
             csi:
               driver: {{ default "secrets-store.csi.k8s.io" $workload.csi.driver | quote }}
               readOnly: {{ default true $workload.csi.readOnly }}
@@ -209,7 +209,7 @@ spec:
                 {{- end }}
           {{- end }}
           {{- if $dotenvEnabled }}
-          - name: {{ include "app.dotenvVolumeName" (list $ $workload) }}
+          - name: {{ include "app.dotenvVolumeName" (list $ $workload) | quote }}
             emptyDir: {}
           {{- end }}
           {{- end }}
