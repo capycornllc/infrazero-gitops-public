@@ -97,7 +97,7 @@ spec:
               done
             volumeMounts:
             - name: {{ include "app.csiVolumeName" (list $ $workload) }}
-              mountPath: {{ $csiMountPath }}
+              mountPath: {{ $csiMountPath | quote }}
               readOnly: true
             - name: {{ include "app.dotenvVolumeName" (list $ $workload) }}
               mountPath: /work
@@ -147,9 +147,9 @@ spec:
             volumeMounts:
             {{- range $mount := $workload.volumeMounts }}
             - name: {{ $mount.name }}
-              mountPath: {{ $mount.mountPath }}
+              mountPath: {{ $mount.mountPath | quote }}
               {{- if hasKey $mount "subPath" }}
-              subPath: {{ $mount.subPath }}
+              subPath: {{ $mount.subPath | quote }}
               {{- end }}
               {{- if hasKey $mount "readOnly" }}
               readOnly: {{ $mount.readOnly }}
@@ -157,7 +157,7 @@ spec:
             {{- end }}
             {{- if $workload.csi.enabled }}
             - name: {{ include "app.csiVolumeName" (list $ $workload) }}
-              mountPath: {{ $csiMountPath }}
+              mountPath: {{ $csiMountPath | quote }}
               readOnly: {{ default true $workload.csi.readOnly }}
             {{- end }}
             {{- if $dotenvEnabled }}
@@ -196,11 +196,11 @@ spec:
           {{- if $workload.csi.enabled }}
           - name: {{ include "app.csiVolumeName" (list $ $workload) }}
             csi:
-              driver: {{ default "secrets-store.csi.k8s.io" $workload.csi.driver }}
+              driver: {{ default "secrets-store.csi.k8s.io" $workload.csi.driver | quote }}
               readOnly: {{ default true $workload.csi.readOnly }}
               volumeAttributes:
                 {{- if $workload.csi.secretProviderClass }}
-                secretProviderClass: {{ $workload.csi.secretProviderClass }}
+                secretProviderClass: {{ $workload.csi.secretProviderClass | quote }}
                 {{- end }}
                 {{- range $k, $v := $workload.csi.volumeAttributes }}
                 {{- if ne $k "secretProviderClass" }}
