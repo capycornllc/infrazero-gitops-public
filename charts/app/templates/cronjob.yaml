@@ -213,6 +213,6 @@ spec:
             emptyDir: {}
           {{- end }}
           {{- end }}
-{{- end }}
-{{- end }}
+{{ end }}
+{{ end }}
 
