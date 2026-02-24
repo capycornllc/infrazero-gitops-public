@@ -203,7 +203,7 @@ spec:
             {{- end }}
             {{- range $k, $v := $workload.csi.volumeAttributes }}
             {{- if ne $k "secretProviderClass" }}
-            {{ $k }}: {{ $v | quote }}
+            {{ $k | quote }}: {{ $v | quote }}
             {{- end }}
             {{- end }}
       {{- end }}
