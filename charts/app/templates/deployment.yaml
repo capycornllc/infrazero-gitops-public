@@ -105,8 +105,11 @@ spec:
             exit 1
           fi
           # Emit KEY="value" lines; multiline values are escaped as \n.
-          # CSI mounts expose keys as symlinks; follow links so values are read.
-          find -L "$SECRETS_DIR" -mindepth 1 -maxdepth 1 -type f | LC_ALL=C sort | while IFS= read -r file; do
+          # CSI mounts expose keys as symlinks under /mnt/secrets.
+          # Iterate directory entries directly so this works across BusyBox/GNU tools.
+          for file in "$SECRETS_DIR"/*; do
+            [ -e "$file" ] || continue
+            [ -f "$file" ] || continue
             key="$(basename "$file")"
             escaped="$(sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e ':a;N;$!ba;s/\n/\\n/g' "$file")"
             printf '%s="%s"\n' "$key" "$escaped" >> "$OUT_FILE"
