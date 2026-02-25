@@ -236,13 +236,15 @@ def normalize_workload(
     if limits:
         item["resources"] = {"limits": limits}
 
-    secrets_folder = pick(
-        workload_payload,
-        ["secrets_folder", "secretsFolder"],
-        default=pick(app_payload, ["secrets_folder", "secretsFolder"]),
-    )
+    workload_secrets_folder = str(
+        pick(workload_payload, ["secrets_folder", "secretsFolder"], default="") or ""
+    ).strip()
+    app_secrets_folder = str(
+        pick(app_payload, ["secrets_folder", "secretsFolder"], default="") or ""
+    ).strip()
+    secrets_folder = workload_secrets_folder or app_secrets_folder
     if secrets_folder:
-        item["secretsFolder"] = str(secrets_folder)
+        item["secretsFolder"] = secrets_folder
         item["csi"] = {
             "enabled": True,
             "driver": "secrets-store.csi.k8s.io",

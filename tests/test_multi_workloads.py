@@ -296,6 +296,30 @@ class MultiWorkloadRenderingTests(unittest.TestCase):
             "infisical-demo-scheduler",
         )
 
+    def test_blank_workload_secret_folder_inherits_app_secret_folder(self) -> None:
+        values_file = self.generate_config(
+            "mixed_blank_workload_secrets.json",
+            "mixed_blank_workload_secrets.generated.yaml",
+        )
+
+        generated = yaml.safe_load(values_file.read_text(encoding="utf-8"))
+        workloads = {item["name"]: item for item in generated["spec"]["workloads"]}
+
+        self.assertEqual(workloads["demo-web"]["secretsFolder"], "demo-shared")
+        self.assertEqual(workloads["demo-queue"]["secretsFolder"], "demo-shared")
+        self.assertEqual(workloads["demo-scheduler"]["secretsFolder"], "demo-shared")
+
+        self.assertEqual(
+            workloads["demo-web"]["csi"]["secretProviderClass"], "infisical-demo-web"
+        )
+        self.assertEqual(
+            workloads["demo-queue"]["csi"]["secretProviderClass"], "infisical-demo-queue"
+        )
+        self.assertEqual(
+            workloads["demo-scheduler"]["csi"]["secretProviderClass"],
+            "infisical-demo-scheduler",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
