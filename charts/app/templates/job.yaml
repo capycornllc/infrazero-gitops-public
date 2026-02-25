@@ -72,7 +72,8 @@ spec:
             exit 1
           fi
           # Emit KEY="value" lines; multiline values are escaped as \n.
-          find "$SECRETS_DIR" -maxdepth 1 -type f | LC_ALL=C sort | while IFS= read -r file; do
+          # CSI mounts expose keys as symlinks; follow links so values are read.
+          find -L "$SECRETS_DIR" -mindepth 1 -maxdepth 1 -type f | LC_ALL=C sort | while IFS= read -r file; do
             key="$(basename "$file")"
             escaped="$(sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e ':a;N;$!ba;s/\n/\\n/g' "$file")"
             printf '%s="%s"\n' "$key" "$escaped" >> "$OUT_FILE"

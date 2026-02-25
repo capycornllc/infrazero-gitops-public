@@ -169,6 +169,7 @@ class MultiWorkloadRenderingTests(unittest.TestCase):
         self.assertEqual(find_mount(init_container, "/mnt/secrets")["name"], "demo-web-csi")
         self.assertEqual(find_mount(init_container, "/work")["name"], "demo-web-dotenv")
         self.assertIn("/work/.env", "\n".join(init_container["command"]))
+        self.assertIn('find -L "$SECRETS_DIR"', "\n".join(init_container["command"]))
         required_terms = (
             pod_spec.get("affinity", {})
             .get("podAntiAffinity", {})
