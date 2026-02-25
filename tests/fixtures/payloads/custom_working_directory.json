@@ -1,0 +1,26 @@
+{
+  "app_name": "demo",
+  "ghcr_image": "ghcr.io/example/demo:1.2.3",
+  "working_directory": "/srv/demo/current",
+  "secrets_folder": "demo-default",
+  "workloads": [
+    {
+      "workload_name": "demo-web",
+      "preset": "web",
+      "kind": "Deployment",
+      "expose": true,
+      "fqdn": "demo-web.example.com",
+      "ports": [
+        {
+          "name": "http",
+          "container_port": 3000,
+          "service_port": 80,
+          "protocol": "TCP"
+        }
+      ],
+      "replica_count": 1,
+      "memory_limit": "256Mi",
+      "cpu_limit": "250m"
+    }
+  ]
+}

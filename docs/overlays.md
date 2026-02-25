@@ -47,10 +47,11 @@ Additional workload guidance:
 - queue/internal worker workloads can be `type: Deployment` with service/ingress disabled and zero ports.
 - scheduler workloads should be `type: CronJob` with a schedule and no service/ingress.
 - spec.workloads[].csi should be enabled when secrets are required, with secretProviderClass set to the name of a SecretProviderClass manifest created by the overlay.
-- When `spec.workloads[].csi.enabled=true`, the chart generates `/app/.env` from mounted secret files (from `csi.mountPath`, default `/mnt/secrets`) before the app container starts.
+- When `spec.workloads[].csi.enabled=true`, the chart generates `<workingDirectory>/.env` (default `/app/.env`) from mounted secret files (from `csi.mountPath`, default `/mnt/secrets`) before the app container starts.
 - Multiline secret values are encoded as escaped `\n` inside `.env`.
 Optional workload fields:
 - spec.workloads[].secretsFolder: name of the Infisical folder whose secrets should be mounted as files for the workload.
+- spec.workloads[].workingDirectory: container working directory used for `.env` mount target (`<workingDirectory>/.env`, default `/app/.env`).
 - Ingress TLS is handled at the ingress layer; the chart does not mount ingress TLS secrets into workload pods by default.
 - When ingress TLS is enabled and a cluster issuer is set, the chart creates a cert-manager `Certificate` per workload using `ingress.tls.secretName` (or the default `<app>-<workload>-tls`).
 

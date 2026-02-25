@@ -2,6 +2,8 @@
 {{- if eq $workload.type "Deployment" }}
 {{- $csiMountPath := default "/mnt/secrets" $workload.csi.mountPath -}}
 {{- $dotenvEnabled := $workload.csi.enabled -}}
+{{- $workingDirectory := default "/app" $workload.workingDirectory -}}
+{{- $dotenvMountPath := printf "%s/.env" (trimSuffix "/" $workingDirectory) -}}
 {{- $replicas := default 1 $workload.replicas -}}
 ---
 apiVersion: apps/v1
@@ -199,7 +201,7 @@ spec:
         {{- end }}
         {{- if $dotenvEnabled }}
         - name: {{ include "app.dotenvVolumeName" (list $ $workload) }}
-          mountPath: /app/.env
+          mountPath: {{ $dotenvMountPath | quote }}
           subPath: .env
           readOnly: true
         {{- end }}

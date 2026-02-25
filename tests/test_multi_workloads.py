@@ -321,6 +321,28 @@ class MultiWorkloadRenderingTests(unittest.TestCase):
             "infisical-demo-scheduler",
         )
 
+    def test_custom_working_directory_controls_dotenv_mount_path(self) -> None:
+        values_file = self.generate_config(
+            "custom_working_directory.json",
+            "custom_working_directory.generated.yaml",
+        )
+        docs = render_chart(values_file)
+
+        deployment = find_doc(docs, "Deployment", "demo-web")
+        self.assertIsNotNone(deployment)
+        pod_spec = deployment["spec"]["template"]["spec"]
+        container = pod_spec["containers"][0]
+
+        dotenv_mount = find_mount(container, "/srv/demo/current/.env")
+        self.assertIsNotNone(dotenv_mount)
+        self.assertEqual(dotenv_mount["subPath"], ".env")
+        self.assertEqual(dotenv_mount["name"], "demo-web-dotenv")
+        self.assertIsNone(find_mount(container, "/app/.env"))
+
+        generated = yaml.safe_load(values_file.read_text(encoding="utf-8"))
+        workloads = {item["name"]: item for item in generated["spec"]["workloads"]}
+        self.assertEqual(workloads["demo-web"]["workingDirectory"], "/srv/demo/current")
+
 
 if __name__ == "__main__":
     unittest.main()

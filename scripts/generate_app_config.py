@@ -5,6 +5,7 @@ Supports the new payload shape:
 {
   "app_name": "my-app",
   "ghcr_image": "ghcr.io/org/app:tag",
+  "working_directory": "/app",
   "secrets_folder": "my-app",
   "workloads": [ ... ]
 }
@@ -35,6 +36,7 @@ DEFAULT_ARGO_NAMESPACE = "argocd"
 DEFAULT_BASE_DOMAIN = "example.com"
 DEFAULT_INGRESS_CLASS_NAME = "traefik"
 DEFAULT_CLUSTER_ISSUER = "letsencrypt-prod"
+DEFAULT_WORKING_DIRECTORY = "/app"
 
 
 def parse_args() -> argparse.Namespace:
@@ -122,6 +124,18 @@ def pick(dct: dict[str, Any], keys: list[str], default: Any = None) -> Any:
     return default
 
 
+def normalize_working_directory(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return DEFAULT_WORKING_DIRECTORY
+    if not text.startswith("/"):
+        text = f"/{text}"
+    text = re.sub(r"/+", "/", text)
+    if len(text) > 1:
+        text = text.rstrip("/")
+    return text or DEFAULT_WORKING_DIRECTORY
+
+
 def normalize_kind(kind: Any, preset: Any) -> str:
     if kind:
         normalized = str(kind).strip().lower()
@@ -207,10 +221,25 @@ def normalize_workload(
 
     preset = pick(workload_payload, ["preset"])
     workload_kind = normalize_kind(pick(workload_payload, ["kind", "type"]), preset)
+    app_working_directory = normalize_working_directory(
+        pick(
+            app_payload,
+            ["working_directory", "workingDirectory"],
+            default=DEFAULT_WORKING_DIRECTORY,
+        )
+    )
+    working_directory = normalize_working_directory(
+        pick(
+            workload_payload,
+            ["working_directory", "workingDirectory"],
+            default=app_working_directory,
+        )
+    )
 
     item: dict[str, Any] = {
         "name": workload_name,
         "type": workload_kind,
+        "workingDirectory": working_directory,
         "image": {
             "repository": image_repository,
             "tag": image_tag,
