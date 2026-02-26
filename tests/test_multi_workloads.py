@@ -170,6 +170,7 @@ class MultiWorkloadRenderingTests(unittest.TestCase):
         self.assertEqual(find_mount(init_container, "/work")["name"], "demo-web-dotenv")
         self.assertIn("/work/.env", "\n".join(init_container["command"]))
         self.assertIn('for file in "$SECRETS_DIR"/*; do', "\n".join(init_container["command"]))
+        self.assertIn('chmod 0444 "$OUT_FILE"', "\n".join(init_container["command"]))
         required_terms = (
             pod_spec.get("affinity", {})
             .get("podAntiAffinity", {})
@@ -214,6 +215,7 @@ class MultiWorkloadRenderingTests(unittest.TestCase):
         self.assertEqual(find_mount(init_container, "/mnt/secrets")["name"], "demo-queue-csi")
         self.assertEqual(find_mount(init_container, "/work")["name"], "demo-queue-dotenv")
         self.assertIn("\\n", "\n".join(init_container["command"]))
+        self.assertIn('chmod 0444 "$OUT_FILE"', "\n".join(init_container["command"]))
         self.assertNotIn("topologySpreadConstraints", pod_spec)
         required_terms = (
             pod_spec.get("affinity", {})
@@ -254,6 +256,7 @@ class MultiWorkloadRenderingTests(unittest.TestCase):
         self.assertEqual(find_mount(init_container, "/mnt/secrets")["name"], "demo-scheduler-csi")
         self.assertEqual(find_mount(init_container, "/work")["name"], "demo-scheduler-dotenv")
         self.assertIn("multiline values are escaped as \\n", "\n".join(init_container["command"]))
+        self.assertIn('chmod 0444 "$OUT_FILE"', "\n".join(init_container["command"]))
 
         csi_volume = find_csi_volume(pod_spec)["csi"]
         self.assertEqual(

@@ -83,6 +83,8 @@ spec:
             escaped="$(sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e ':a;N;$!ba;s/\n/\\n/g' "$file")"
             printf '%s="%s"\n' "$key" "$escaped" >> "$OUT_FILE"
           done
+          # Ensure non-root runtime users (for example www-data) can read the file.
+          chmod 0444 "$OUT_FILE"
         volumeMounts:
         - name: {{ include "app.csiVolumeName" (list $ $workload) }}
           mountPath: {{ $csiMountPath | quote }}
