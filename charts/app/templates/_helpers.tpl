@@ -62,6 +62,16 @@ app.kubernetes.io/component: {{ $workload.name | quote }}
 {{- printf "%s-dotenv" $workload.name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{- define "app.runtimeConfigVolumeName" -}}
+{{- $workload := index . 1 -}}
+{{- printf "%s-runtime-config" $workload.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "app.runtimeConfigMapName" -}}
+{{- $workload := index . 1 -}}
+{{- printf "%s-runtime-config" (include "app.workloadName" (list (index . 0) $workload)) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{- define "app.tlsSecretName" -}}
 {{- $root := index . 0 -}}
 {{- $workload := index . 1 -}}

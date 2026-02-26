@@ -157,6 +157,8 @@
       "properties": {
         "name": { "type": "string", "minLength": 1 },
         "type": { "type": "string", "enum": ["Deployment", "CronJob", "Job"] },
+        "role": { "type": "string", "enum": ["proxy", "app", "worker", "scheduler", "custom"] },
+        "timeoutProfile": { "type": "string", "enum": ["standard", "long_request", "realtime"] },
         "workingDirectory": { "type": "string" },
         "image": { "$ref": "#/definitions/image" },
         "replicas": { "type": "integer", "minimum": 0 },
@@ -172,6 +174,39 @@
           ]
         },
         "args": { "type": "array", "items": { "type": "string" } },
+        "upstreams": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "protocol": { "type": "string", "enum": ["fastcgi", "http", "grpc", "tcp"] },
+              "targetWorkload": { "type": "string" },
+              "targetPort": { "type": "string" },
+              "endpoint": { "type": "string" }
+            }
+          }
+        },
+        "runtimeConfig": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": { "type": "string", "enum": ["image_baked", "ui_managed_configmap"] },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "key": { "type": "string" },
+                  "mountPath": { "type": "string" },
+                  "content": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
         "ports": { "type": "array", "items": { "$ref": "#/definitions/ports" } },
         "service": {
           "type": "object",

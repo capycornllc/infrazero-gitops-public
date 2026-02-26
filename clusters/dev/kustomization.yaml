@@ -10,7 +10,7 @@ resources:
 - applications/platform/infisical-secrets-operator.yaml
 - applications/platform/infisical-secretproviderclass.yaml
 - applications/platform/promtail.yaml
-- applications/app/application.yaml
+- applications/apps/example.yaml
 labels:
 - pairs:
     env: dev

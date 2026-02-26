@@ -4,6 +4,10 @@
 {{- $dotenvEnabled := $workload.csi.enabled -}}
 {{- $workingDirectory := default "/app" $workload.workingDirectory -}}
 {{- $dotenvMountPath := printf "%s/.env" (trimSuffix "/" $workingDirectory) -}}
+{{- $runtimeConfig := default (dict) $workload.runtimeConfig -}}
+{{- $runtimeMode := default "image_baked" $runtimeConfig.mode -}}
+{{- $runtimeFiles := default (list) $runtimeConfig.files -}}
+{{- $runtimeConfigEnabled := and (eq $runtimeMode "ui_managed_configmap") (gt (len $runtimeFiles) 0) -}}
 {{- $replicas := default 1 $workload.replicas -}}
 ---
 apiVersion: apps/v1
@@ -183,7 +187,7 @@ spec:
 {{ toYaml . | nindent 10 }}
           {{- end }}
         {{- end }}
-        {{- $hasMounts := or $workload.volumeMounts $workload.csi.enabled $dotenvEnabled }}
+        {{- $hasMounts := or $workload.volumeMounts $workload.csi.enabled $dotenvEnabled $runtimeConfigEnabled }}
         {{- if $hasMounts }}
         volumeMounts:
         {{- range $mount := $workload.volumeMounts }}
@@ -207,8 +211,19 @@ spec:
           subPath: .env
           readOnly: true
         {{- end }}
+        {{- if $runtimeConfigEnabled }}
+        {{- range $file := $runtimeFiles }}
+        {{- $mountPath := default $file.mountPath $file.mount_path -}}
+        {{- if and $file.key $mountPath }}
+        - name: {{ include "app.runtimeConfigVolumeName" (list $ $workload) }}
+          mountPath: {{ $mountPath | quote }}
+          subPath: {{ $file.key | quote }}
+          readOnly: true
         {{- end }}
-      {{- $hasVolumes := or $workload.volumes $workload.csi.enabled $dotenvEnabled }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+      {{- $hasVolumes := or $workload.volumes $workload.csi.enabled $dotenvEnabled $runtimeConfigEnabled }}
       {{- if $hasVolumes }}
       volumes:
       {{- range $volume := $workload.volumes }}
@@ -252,6 +267,11 @@ spec:
       {{- if $dotenvEnabled }}
       - name: {{ include "app.dotenvVolumeName" (list $ $workload) }}
         emptyDir: {}
+      {{- end }}
+      {{- if $runtimeConfigEnabled }}
+      - name: {{ include "app.runtimeConfigVolumeName" (list $ $workload) }}
+        configMap:
+          name: {{ include "app.runtimeConfigMapName" (list $ $workload) }}
       {{- end }}
       {{- end }}
 {{ end }}
