@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: promtail
+  namespace: argocd
+spec:
+  project: cluster-dev
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: promtail
+    targetRevision: 6.17.1
+    helm:
+      values: |
+        extraArgs:
+        - -config.expand-env=true
+        extraEnv:
+        - name: LOKI_PUSH_URL
+          # Keep this aligned with infra EGRESS_LOKI_URL.
+          value: http://10.10.0.11:3100/loki/api/v1/push
+        config:
+          clients:
+          - url: ${LOKI_PUSH_URL}
+            external_labels:
+              cluster: dev
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
