@@ -201,8 +201,10 @@ def normalize_ports(ports: Any) -> list[dict[str, Any]]:
     return normalized
 
 
-def build_secret_provider_class_name(workload_name: str) -> str:
-    sanitized = re.sub(r"[^a-z0-9-]+", "-", workload_name.lower()).strip("-")
+def build_secret_provider_class_name(seed: str) -> str:
+    sanitized = re.sub(r"[^a-z0-9-]+", "-", seed.lower()).strip("-")
+    if not sanitized:
+        sanitized = "app"
     return f"infisical-{sanitized}"
 
 
@@ -273,11 +275,13 @@ def normalize_workload(
     ).strip()
     secrets_folder = workload_secrets_folder or app_secrets_folder
     if secrets_folder:
+        app_name = str(pick(app_payload, ["app_name", "name"], default="") or "").strip()
+        spc_seed = secrets_folder or app_name or "app"
         item["secretsFolder"] = secrets_folder
         item["csi"] = {
             "enabled": True,
             "driver": "secrets-store.csi.k8s.io",
-            "secretProviderClass": build_secret_provider_class_name(workload_name),
+            "secretProviderClass": build_secret_provider_class_name(spc_seed),
             "readOnly": True,
             "mountPath": "/mnt/secrets",
             "volumeAttributes": {},
