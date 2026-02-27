@@ -5,6 +5,7 @@ resources:
 - traefik-helmchartconfig.yaml
 - applications/platform/cert-manager.yaml
 - applications/platform/cert-manager-issuers.yaml
+- applications/platform/k3s-kubelet-prep.yaml
 - applications/platform/secrets-store-csi.yaml
 - applications/platform/infisical-csi-provider.yaml
 - applications/platform/infisical-secrets-operator.yaml

@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: k3s-kubelet-registry-dir
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: k3s-kubelet-registry-dir
+    app.kubernetes.io/part-of: infrazero-platform
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: k3s-kubelet-registry-dir
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: k3s-kubelet-registry-dir
+    spec:
+      tolerations:
+      - operator: Exists
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+      - name: ensure-dir
+        image: alpine:3.20
+        securityContext:
+          privileged: true
+        command:
+        - sh
+        - -ec
+        - |
+          mkdir -p /host/var/lib/rancher/k3s/agent/kubelet/plugins_registry
+          chmod 755 /host/var/lib/rancher/k3s/agent/kubelet/plugins_registry
+          sleep 3600
+        resources:
+          requests:
+            cpu: 5m
+            memory: 16Mi
+          limits:
+            cpu: 50m
+            memory: 64Mi
+        volumeMounts:
+        - name: host-root
+          mountPath: /host
+      volumes:
+      - name: host-root
+        hostPath:
+          path: /
+          type: Directory
