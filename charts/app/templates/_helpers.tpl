@@ -41,11 +41,13 @@ app.kubernetes.io/component: {{ $workload.name | quote }}
 {{- define "app.serviceAccountName" -}}
 {{- $root := index . 0 -}}
 {{- $workload := index . 1 -}}
+{{- $global := default (dict) $root.Values.spec.global -}}
+{{- $serviceAccount := default (dict) $global.serviceAccount -}}
 {{- if $workload.serviceAccountName -}}
 {{- $workload.serviceAccountName -}}
-{{- else if $root.Values.spec.global.serviceAccount.name -}}
-{{- $root.Values.spec.global.serviceAccount.name -}}
-{{- else if $root.Values.spec.global.serviceAccount.create -}}
+{{- else if $serviceAccount.name -}}
+{{- $serviceAccount.name -}}
+{{- else if $serviceAccount.create -}}
 {{- include "app.fullname" $root -}}
 {{- else -}}
 {{- "" -}}
@@ -75,10 +77,12 @@ app.kubernetes.io/component: {{ $workload.name | quote }}
 {{- define "app.tlsSecretName" -}}
 {{- $root := index . 0 -}}
 {{- $workload := index . 1 -}}
+{{- $global := default (dict) $root.Values.spec.global -}}
+{{- $tls := default (dict) $global.tls -}}
 {{- if and $workload.ingress $workload.ingress.tls $workload.ingress.tls.secretName -}}
 {{- $workload.ingress.tls.secretName -}}
-{{- else if $root.Values.spec.global.tls.secretName -}}
-{{- $root.Values.spec.global.tls.secretName -}}
+{{- else if $tls.secretName -}}
+{{- $tls.secretName -}}
 {{- else -}}
 {{- printf "%s-tls" (include "app.workloadName" (list $root $workload)) -}}
 {{- end -}}

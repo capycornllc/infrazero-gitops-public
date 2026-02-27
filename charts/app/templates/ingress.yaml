@@ -1,5 +1,7 @@
 {{- range $workload := .Values.spec.workloads }}
 {{- if and (eq $workload.type "Deployment") $workload.ingress $workload.ingress.enabled $workload.service $workload.service.enabled $workload.ports }}
+{{- $global := default (dict) $.Values.spec.global -}}
+{{- $globalTls := default (dict) $global.tls -}}
 {{- $defaultPort := 80 -}}
 {{- if $workload.ports }}
   {{- $first := index $workload.ports 0 -}}
@@ -9,7 +11,7 @@
     {{- $defaultPort = $first.containerPort -}}
   {{- end }}
 {{- end }}
-{{- $tlsEnabled := $.Values.spec.global.tls.enabled -}}
+{{- $tlsEnabled := $globalTls.enabled -}}
 {{- if and $workload.ingress.tls (hasKey $workload.ingress.tls "enabled") }}
   {{- $tlsEnabled = $workload.ingress.tls.enabled -}}
 {{- end }}
@@ -23,22 +25,22 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "app.workloadName" (list $ $workload) }}
-  namespace: {{ $.Values.spec.global.namespace }}
+  namespace: {{ default "default" $global.namespace }}
   labels:
     {{- include "app.commonLabels" $ | nindent 4 }}
     app.kubernetes.io/component: {{ $workload.name }}
-    {{- with $.Values.spec.global.labels }}
+    {{- with $global.labels }}
 {{ toYaml . | nindent 4 }}
     {{- end }}
   annotations:
-    {{- if and $tlsEnabled $.Values.spec.global.tls.clusterIssuer }}
-    cert-manager.io/cluster-issuer: {{ $.Values.spec.global.tls.clusterIssuer }}
+    {{- if and $tlsEnabled $globalTls.clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ $globalTls.clusterIssuer }}
     {{- end }}
     {{- with $workload.ingress.annotations }}
 {{ toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  {{- $className := default $.Values.spec.global.ingressClassName $workload.ingress.className }}
+  {{- $className := default $global.ingressClassName $workload.ingress.className }}
   {{- if $className }}
   ingressClassName: {{ $className }}
   {{- end }}
@@ -46,7 +48,7 @@ spec:
   {{- range $hostEntry := $hosts }}
   {{- $host := $hostEntry.host }}
   {{- if not $host }}
-    {{- $host = printf "%s.%s" $workload.name $.Values.spec.global.baseDomain -}}
+    {{- $host = printf "%s.%s" $workload.name $global.baseDomain -}}
   {{- end }}
   {{- $paths := $hostEntry.paths }}
   {{- if not $paths }}
@@ -71,7 +73,7 @@ spec:
     {{- range $hostEntry := $hosts }}
     {{- $host := $hostEntry.host }}
     {{- if not $host }}
-      {{- $host = printf "%s.%s" $workload.name $.Values.spec.global.baseDomain -}}
+      {{- $host = printf "%s.%s" $workload.name $global.baseDomain -}}
     {{- end }}
     - {{ $host }}
     {{- end }}

@@ -1,13 +1,15 @@
-{{- if .Values.spec.global.networkPolicy.enabled }}
+{{- $global := default (dict) .Values.spec.global -}}
+{{- $networkPolicy := default (dict) $global.networkPolicy -}}
+{{- if $networkPolicy.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: {{ include "app.fullname" . }}-default
-  namespace: {{ .Values.spec.global.namespace }}
+  namespace: {{ default "default" $global.namespace }}
   labels:
     {{- include "app.commonLabels" . | nindent 4 }}
-    {{- with .Values.spec.global.labels }}
+    {{- with $global.labels }}
 {{ toYaml . | nindent 4 }}
     {{- end }}
 spec:
@@ -15,15 +17,15 @@ spec:
   policyTypes:
   - Ingress
   - Egress
-  {{- if .Values.spec.global.networkPolicy.ingress }}
+  {{- if $networkPolicy.ingress }}
   ingress:
-{{ toYaml .Values.spec.global.networkPolicy.ingress | nindent 2 }}
+{{ toYaml $networkPolicy.ingress | nindent 2 }}
   {{- else }}
   ingress: []
   {{- end }}
-  {{- if .Values.spec.global.networkPolicy.egress }}
+  {{- if $networkPolicy.egress }}
   egress:
-{{ toYaml .Values.spec.global.networkPolicy.egress | nindent 2 }}
+{{ toYaml $networkPolicy.egress | nindent 2 }}
   {{- else }}
   egress: []
   {{- end }}
