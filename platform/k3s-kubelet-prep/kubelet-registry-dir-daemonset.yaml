@@ -28,8 +28,19 @@ spec:
         - sh
         - -ec
         - |
-          mkdir -p /host/var/lib/rancher/k3s/agent/kubelet/plugins_registry
-          chmod 755 /host/var/lib/rancher/k3s/agent/kubelet/plugins_registry
+          ensure_dir() {
+            target="$1"
+            if [ -e "$target" ] && [ ! -d "$target" ]; then
+              rm -f "$target"
+            fi
+            mkdir -p "$target"
+            chmod 755 "$target"
+          }
+
+          ensure_dir /host/var/lib/rancher/k3s/agent/kubelet/plugins_registry
+          ensure_dir /host/var/lib/rancher/k3s/agent/kubelet/plugins/csi-secrets-store
+          ensure_dir /host/var/lib/kubelet/plugins_registry
+          ensure_dir /host/var/lib/kubelet/plugins/csi-secrets-store
           sleep 3600
         resources:
           requests:
