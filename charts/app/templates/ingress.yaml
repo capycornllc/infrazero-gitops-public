@@ -17,6 +17,7 @@
 {{- end }}
 {{- $tlsSecret := include "app.tlsSecretName" (list $ $workload) -}}
 {{- $hosts := $workload.ingress.hosts -}}
+{{- $ingressAnnotations := default (dict) $workload.ingress.annotations -}}
 {{- if not $hosts }}
   {{- $hosts = list (dict "host" "" "paths" (list (dict "path" "/" "pathType" "Prefix" "servicePort" $defaultPort))) -}}
 {{- end }}
@@ -35,8 +36,11 @@ metadata:
   annotations:
     {{- if and $tlsEnabled $globalTls.clusterIssuer }}
     cert-manager.io/cluster-issuer: {{ $globalTls.clusterIssuer }}
+    {{- if not (hasKey $ingressAnnotations "acme.cert-manager.io/http01-edit-in-place") }}
+    acme.cert-manager.io/http01-edit-in-place: "true"
     {{- end }}
-    {{- with $workload.ingress.annotations }}
+    {{- end }}
+    {{- with $ingressAnnotations }}
 {{ toYaml . | nindent 4 }}
     {{- end }}
 spec:

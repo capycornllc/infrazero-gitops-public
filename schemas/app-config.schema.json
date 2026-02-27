@@ -51,7 +51,8 @@
               "properties": {
                 "enabled": { "type": "boolean" },
                 "clusterIssuer": { "type": "string" },
-                "secretName": { "type": "string" }
+                "secretName": { "type": "string" },
+                "createCertificate": { "type": "boolean" }
               }
             },
             "imagePullSecrets": {

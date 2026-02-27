@@ -8,8 +8,9 @@
     {{- $tlsEnabled = $workload.ingress.tls.enabled -}}
   {{- end }}
 {{- end }}
+{{- $createCertificate := default false $globalTls.createCertificate -}}
 {{- $emitCert := false -}}
-{{- if and $workload.ingress $workload.ingress.enabled $tlsEnabled $globalTls.clusterIssuer }}
+{{- if and $createCertificate $workload.ingress $workload.ingress.enabled $tlsEnabled $globalTls.clusterIssuer }}
   {{- $emitCert = true -}}
 {{- end }}
 {{- if $emitCert }}

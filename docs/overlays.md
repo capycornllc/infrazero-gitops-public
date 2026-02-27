@@ -53,7 +53,8 @@ Optional workload fields:
 - spec.workloads[].secretsFolder: name of the Infisical folder whose secrets should be mounted as files for the workload.
 - spec.workloads[].workingDirectory: container working directory used for `.env` mount target (`<workingDirectory>/.env`, default `/app/.env`).
 - Ingress TLS is handled at the ingress layer; the chart does not mount ingress TLS secrets into workload pods by default.
-- When ingress TLS is enabled and a cluster issuer is set, the chart creates a cert-manager `Certificate` per workload using `ingress.tls.secretName` (or the default `<app>-<workload>-tls`).
+- When ingress TLS is enabled and a cluster issuer is set, the chart adds cert-manager ingress annotations and enables HTTP-01 edit-in-place by default.
+- The chart only creates explicit cert-manager `Certificate` resources when `spec.global.tls.createCertificate: true`.
 
 ### clusters/<env>/applications/app/application.yaml
 Patch the Argo CD Application for the app:
