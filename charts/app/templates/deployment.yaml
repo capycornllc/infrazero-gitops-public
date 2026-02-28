@@ -45,12 +45,7 @@ spec:
 {{ toYaml . | nindent 8 }}
       {{- end }}
     spec:
-      {{- if $.Values.spec.global.imagePullSecrets }}
-      imagePullSecrets:
-      {{- range $secret := $.Values.spec.global.imagePullSecrets }}
-      - name: {{ $secret }}
-      {{- end }}
-      {{- end }}
+      {{- include "app.imagePullSecrets" $ | nindent 6 }}
       {{- $saName := include "app.serviceAccountName" (list $ $workload) }}
       {{- if $saName }}
       serviceAccountName: {{ $saName }}

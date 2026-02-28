@@ -51,12 +51,7 @@ spec:
           {{- end }}
         spec:
           restartPolicy: {{ default "OnFailure" $workload.restartPolicy | quote }}
-          {{- if $.Values.spec.global.imagePullSecrets }}
-          imagePullSecrets:
-          {{- range $secret := $.Values.spec.global.imagePullSecrets }}
-          - name: {{ $secret | quote }}
-          {{- end }}
-          {{- end }}
+          {{- include "app.imagePullSecrets" $ | nindent 10 }}
           {{- $saName := include "app.serviceAccountName" (list $ $workload) }}
           {{- if $saName }}
           serviceAccountName: {{ $saName | quote }}

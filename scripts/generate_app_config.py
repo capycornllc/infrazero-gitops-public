@@ -37,6 +37,7 @@ DEFAULT_BASE_DOMAIN = "example.com"
 DEFAULT_INGRESS_CLASS_NAME = "traefik"
 DEFAULT_CLUSTER_ISSUER = "letsencrypt-prod"
 DEFAULT_WORKING_DIRECTORY = "/app"
+DEFAULT_IMAGE_PULL_SECRET = "ghcr-pull"
 
 
 def parse_args() -> argparse.Namespace:
@@ -465,7 +466,7 @@ def build_app_config(app_payload: dict[str, Any], args: argparse.Namespace) -> d
                     "clusterIssuer": args.tls_cluster_issuer,
                     "secretName": "",
                 },
-                "imagePullSecrets": [],
+                "imagePullSecrets": [DEFAULT_IMAGE_PULL_SECRET],
                 "serviceAccount": {
                     "create": False,
                     "name": "",

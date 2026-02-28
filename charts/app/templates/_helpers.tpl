@@ -54,6 +54,17 @@ app.kubernetes.io/component: {{ $workload.name | quote }}
 {{- end -}}
 {{- end -}}
 
+{{- define "app.imagePullSecrets" -}}
+{{- $global := default (dict) .Values.spec.global -}}
+{{- $secrets := default (list "ghcr-pull") $global.imagePullSecrets -}}
+{{- if gt (len $secrets) 0 }}
+imagePullSecrets:
+{{- range $secret := $secrets }}
+- name: {{ $secret | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
 {{- define "app.csiVolumeName" -}}
 {{- $workload := index . 1 -}}
 {{- printf "%s-csi" $workload.name | trunc 63 | trimSuffix "-" -}}
