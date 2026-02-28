@@ -14,8 +14,8 @@ This repository is the public GitOps base. The infra pipeline clones it into a p
 
 ## Overlay targets (patch or regenerate)
 
-### config/app-config.yaml
-Replace the file with a generated config derived from deployed_apps_json and global settings.
+### config/apps/<app>.yaml
+Replace each per-app values file with generated config derived from deployed_apps_json and global settings.
 
 Required fields to set:
 - spec.bootstrap.repoURL, spec.bootstrap.env, spec.bootstrap.targetRevision, spec.bootstrap.argoNamespace
@@ -25,7 +25,7 @@ Required fields to set:
 - spec.workloads[] generated from deployed_apps_json.workloads
 
 Mapping guidance for deployed_apps_json to spec.workloads[]:
-| deployed_apps_json field | app-config path | notes |
+| deployed_apps_json field | values path | notes |
 | --- | --- | --- |
 | app_name | metadata.name / spec.global.name | Single app per AppConfig. |
 | ghcr_image | spec.workloads[].image.repository + image.tag | Split image tag if present. |
@@ -56,8 +56,8 @@ Optional workload fields:
 - When ingress TLS is enabled and a cluster issuer is set, the chart adds cert-manager ingress annotations and enables HTTP-01 edit-in-place by default.
 - The chart only creates explicit cert-manager `Certificate` resources when `spec.global.tls.createCertificate: true`.
 
-### clusters/<env>/applications/app/application.yaml
-Patch the Argo CD Application for the app:
+### clusters/<env>/applications/apps/<app>.yaml
+Patch each Argo CD Application for an app:
 - metadata.name should match the app name.
 - metadata.namespace should be the Argo CD namespace.
 - spec.project should be cluster-<env>.

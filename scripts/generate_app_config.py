@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Generate config/app-config.yaml from deployed_apps_json payloads.
+"""Generate an AppConfig values file from deployed_apps_json payloads.
 
 Supports the new payload shape:
 {

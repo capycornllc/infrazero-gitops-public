@@ -1,10 +1,10 @@
 # infrazero-gitops-public
 
 Bootstrap
-- Edit `config/app-config.yaml` (bootstrap repoURL/env, app name/namespace, workloads, optional `secretsFolder`). `env` should match `dev`, `test`, or `prod`.
+- Edit `config/apps/*.yaml` (bootstrap repoURL/env, app name/namespace, workloads, optional `secretsFolder`). `env` should match `dev`, `test`, or `prod`.
 - Apply the root app: `kubectl apply -f apps/root/application.yaml`.
 - Argo CD syncs the selected `clusters/<env>` overlay and the app chart.
-- Validate config locally: `python scripts/validate_app_config.py --config config/app-config.yaml --schema schemas/app-config.schema.json`.
+- Validate config locally: `python scripts/validate_app_config.py --config config/apps/<app>.yaml --schema schemas/app-config.schema.json`.
 
 Payload-driven generation
 - Generate `AppConfig` from `deployed_apps_json` (new shape: app-level fields + workload array):
@@ -44,9 +44,9 @@ Layout
 - `clusters/<env>/kustomization.yaml`: environment overlays (dev/test/prod).
 - `clusters/<env>/bootstrap/infisical-k8s-auth`: Job for Infisical Kubernetes Auth bootstrap.
 - `clusters/<env>/project.yaml`: Argo CD Project with repo allowlist.
-- `clusters/<env>/applications/app/application.yaml`: single Argo CD Application for the app.
+- `clusters/<env>/applications/apps/*.yaml`: per-app Argo CD Applications.
 - `clusters/<env>/applications/platform/*.yaml`: platform add-ons (ingress-nginx, cert-manager, secrets-store CSI, Infisical provider).
-- `config/app-config.yaml`: single source of truth for workloads and routing.
+- `config/apps/*.yaml`: per-app values used by Argo CD Applications.
 - `charts/app/`: Helm chart renderer for workloads.
 - `platform/cert-manager/cluster-issuers.yaml`: Let's Encrypt ClusterIssuers (staging/prod).
 - `platform/infisical/secretproviderclass.yaml`: Infisical SecretProviderClass template (Kubernetes auth parameters).

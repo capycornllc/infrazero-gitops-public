@@ -34,11 +34,20 @@ jobs:
       with:
         version: v3.14.4
 
-    - name: Validate checked-in AppConfig schema
+    - name: Validate checked-in per-app configs
+      shell: bash
       run: |
-        python scripts/validate_app_config.py \
-          --config config/app-config.yaml \
-          --schema schemas/app-config.schema.json
+        set -euo pipefail
+        mapfile -t app_configs < <(find config/apps -maxdepth 1 -type f \( -name "*.yaml" -o -name "*.yml" \) | sort)
+        if [ "${#app_configs[@]}" -eq 0 ]; then
+          echo "No config/apps/*.yaml files found" >&2
+          exit 1
+        fi
+        for config_path in "${app_configs[@]}"; do
+          python scripts/validate_app_config.py \
+            --config "$config_path" \
+            --schema schemas/app-config.schema.json
+        done
 
     - name: Run multi-workload rendering tests
       run: python -m unittest discover -s tests -p "test_*.py"
