@@ -24,3 +24,6 @@ spec:
       # For NodePort services, Traefik publishes the nodes' ExternalIPs into the Ingress status,
       # which is enough for ArgoCD to consider Ingress resources healthy.
       - "--providers.kubernetesingress.ingressendpoint.publishedservice=kube-system/traefik"
+      # Redirect all HTTP traffic to HTTPS
+      - "--entrypoints.web.http.redirections.entryPoint.to=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"

@@ -1,0 +1,146 @@
+{{- $global := default (dict) .Values.spec.global -}}
+{{- $globalTls := default (dict) $global.tls -}}
+{{- $tlsEnabled := $globalTls.enabled -}}
+{{- if $tlsEnabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cert-check
+  namespace: {{ default "default" $global.namespace }}
+  labels:
+    {{- include "app.commonLabels" $ | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccountName: cert-check
+      restartPolicy: Never
+      containers:
+        - name: cert-check
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              NAMESPACE="{{ default "default" $global.namespace }}"
+              TIMEOUT=300
+              INTERVAL=10
+              FAILED=0
+
+              echo "=== Certificate Validation ==="
+              echo "Namespace: $NAMESPACE"
+              echo "Timeout: ${TIMEOUT}s"
+
+              # Collect all Certificate resources
+              CERTS=$(kubectl get certificates -n "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+              if [ -z "$CERTS" ]; then
+                echo "No Certificate resources found. Skipping validation."
+                exit 0
+              fi
+
+              echo "Found certificates: $CERTS"
+
+              for CERT in $CERTS; do
+                echo ""
+                echo "--- Checking certificate: $CERT ---"
+                ELAPSED=0
+                READY=false
+
+                while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
+                  STATUS=$(kubectl get certificate "$CERT" -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+                  if [ "$STATUS" = "True" ]; then
+                    echo "✓ Certificate $CERT is Ready"
+                    READY=true
+                    break
+                  fi
+
+                  # Check for rate limit errors
+                  REASON=$(kubectl get certificate "$CERT" -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}' 2>/dev/null || echo "")
+                  if echo "$REASON" | grep -qi "rate limit\|too many certificates\|too many requests"; then
+                    DOMAIN=$(kubectl get certificate "$CERT" -n "$NAMESPACE" -o jsonpath='{.spec.dnsNames[0]}' 2>/dev/null || echo "unknown")
+                    echo "✗ RATE LIMIT ERROR for certificate $CERT (domain: $DOMAIN)"
+                    echo "  Message: $REASON"
+                    echo "  Recommendation: Wait at least 1 hour before retrying. Let's Encrypt rate limits reset weekly."
+                    echo "  See: https://letsencrypt.org/docs/rate-limits/"
+                    FAILED=$((FAILED + 1))
+                    break
+                  fi
+
+                  echo "  Waiting for $CERT... (${ELAPSED}s/${TIMEOUT}s) status=$STATUS"
+                  sleep "$INTERVAL"
+                  ELAPSED=$((ELAPSED + INTERVAL))
+                done
+
+                if [ "$READY" = "false" ] && [ "$FAILED" -eq 0 ]; then
+                  DOMAIN=$(kubectl get certificate "$CERT" -n "$NAMESPACE" -o jsonpath='{.spec.dnsNames[0]}' 2>/dev/null || echo "unknown")
+                  MESSAGE=$(kubectl get certificate "$CERT" -n "$NAMESPACE" -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}' 2>/dev/null || echo "no message")
+                  echo "✗ TIMEOUT: Certificate $CERT (domain: $DOMAIN) did not become Ready within ${TIMEOUT}s"
+                  echo "  Last status message: $MESSAGE"
+                  echo ""
+                  echo "  Recent cert-manager events:"
+                  kubectl get events -n "$NAMESPACE" --field-selector "involvedObject.name=$CERT,involvedObject.kind=Certificate" --sort-by='.lastTimestamp' 2>/dev/null | tail -5 || echo "  (no events found)"
+                  FAILED=$((FAILED + 1))
+                fi
+              done
+
+              echo ""
+              if [ "$FAILED" -gt 0 ]; then
+                echo "=== CERTIFICATE VALIDATION FAILED ==="
+                echo "$FAILED certificate(s) failed validation."
+                echo "Deployment should be considered DEGRADED — sites may show 'connection not secure' warnings."
+                exit 1
+              else
+                echo "=== All certificates validated successfully ==="
+                exit 0
+              fi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cert-check
+  namespace: {{ default "default" $global.namespace }}
+  labels:
+    {{- include "app.commonLabels" $ | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cert-check
+  namespace: {{ default "default" $global.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+rules:
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cert-check
+  namespace: {{ default "default" $global.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+subjects:
+  - kind: ServiceAccount
+    name: cert-check
+    namespace: {{ default "default" $global.namespace }}
+roleRef:
+  kind: Role
+  name: cert-check
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

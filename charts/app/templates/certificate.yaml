@@ -2,6 +2,7 @@
 {{- if eq $workload.type "Deployment" }}
 {{- $global := default (dict) $.Values.spec.global -}}
 {{- $globalTls := default (dict) $global.tls -}}
+{{- $clusterIssuer := default "letsencrypt-prod" $globalTls.clusterIssuer -}}
 {{- $tlsEnabled := $globalTls.enabled -}}
 {{- if $workload.ingress }}
   {{- if and $workload.ingress.tls (hasKey $workload.ingress.tls "enabled") }}
@@ -10,7 +11,7 @@
 {{- end }}
 {{- $createCertificate := default false $globalTls.createCertificate -}}
 {{- $emitCert := false -}}
-{{- if and $createCertificate $workload.ingress $workload.ingress.enabled $tlsEnabled $globalTls.clusterIssuer }}
+{{- if and $createCertificate $workload.ingress $workload.ingress.enabled $tlsEnabled }}
   {{- $emitCert = true -}}
 {{- end }}
 {{- if $emitCert }}
@@ -34,7 +35,7 @@ metadata:
 spec:
   secretName: {{ $tlsSecret }}
   issuerRef:
-    name: {{ $globalTls.clusterIssuer }}
+    name: {{ $clusterIssuer }}
     kind: ClusterIssuer
   dnsNames:
   {{- range $hostEntry := $hosts }}

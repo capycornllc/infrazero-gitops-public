@@ -14,3 +14,5 @@ spec:
         externalTrafficPolicy: Local
     additionalArguments:
       - "--providers.kubernetesingress.ingressendpoint.publishedservice=kube-system/traefik"
+      - "--entrypoints.web.http.redirections.entryPoint.to=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"

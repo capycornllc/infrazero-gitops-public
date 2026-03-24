@@ -2,6 +2,7 @@
 {{- if and (eq $workload.type "Deployment") $workload.ingress $workload.ingress.enabled $workload.service $workload.service.enabled $workload.ports }}
 {{- $global := default (dict) $.Values.spec.global -}}
 {{- $globalTls := default (dict) $global.tls -}}
+{{- $clusterIssuer := default "letsencrypt-prod" $globalTls.clusterIssuer -}}
 {{- $defaultPort := 80 -}}
 {{- if $workload.ports }}
   {{- $first := index $workload.ports 0 -}}
@@ -34,8 +35,8 @@ metadata:
 {{ toYaml . | nindent 4 }}
     {{- end }}
   annotations:
-    {{- if and $tlsEnabled $globalTls.clusterIssuer }}
-    cert-manager.io/cluster-issuer: {{ $globalTls.clusterIssuer }}
+    {{- if $tlsEnabled }}
+    cert-manager.io/cluster-issuer: {{ $clusterIssuer }}
     {{- if not (hasKey $ingressAnnotations "acme.cert-manager.io/http01-edit-in-place") }}
     acme.cert-manager.io/http01-edit-in-place: "true"
     {{- end }}
