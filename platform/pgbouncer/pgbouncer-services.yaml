@@ -1,0 +1,72 @@
+# PgBouncer write/read Kubernetes services
+# These headless services + endpoints point to the PgBouncer VM.
+# The IP address is rendered by infrazero at deploy time.
+#
+# Applications use:
+#   DATABASE_URL=postgres://user:pass@pgbouncer-write.database:5432/db
+#   DATABASE_READ_URL=postgres://user:pass@pgbouncer-read.database:5433/db
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: database
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer-write
+  namespace: database
+  labels:
+    app.kubernetes.io/name: pgbouncer
+    app.kubernetes.io/component: write
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+  clusterIP: None
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: pgbouncer-write
+  namespace: database
+subsets:
+  - addresses:
+      - ip: "PGBOUNCER_IP_PLACEHOLDER"
+    ports:
+      - name: postgres
+        port: 5432
+        protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer-read
+  namespace: database
+  labels:
+    app.kubernetes.io/name: pgbouncer
+    app.kubernetes.io/component: read
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: 5433
+      targetPort: 5433
+      protocol: TCP
+  clusterIP: None
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: pgbouncer-read
+  namespace: database
+subsets:
+  - addresses:
+      - ip: "PGBOUNCER_IP_PLACEHOLDER"
+    ports:
+      - name: postgres
+        port: 5433
+        protocol: TCP

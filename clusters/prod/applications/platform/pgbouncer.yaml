@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pgbouncer-services
+  namespace: argocd
+spec:
+  project: cluster-prod
+  source:
+    repoURL: https://github.com/capycornllc/infrazero-gitops-public.git
+    targetRevision: main
+    path: platform/pgbouncer
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: database
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
