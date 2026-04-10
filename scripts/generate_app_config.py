@@ -277,7 +277,7 @@ def normalize_workload(
     secrets_folder = workload_secrets_folder or app_secrets_folder
     if secrets_folder:
         app_name = str(pick(app_payload, ["app_name", "name"], default="") or "").strip()
-        spc_seed = secrets_folder or app_name or "app"
+        spc_seed = workload_name or app_name or "app"
         item["secretsFolder"] = secrets_folder
         item["csi"] = {
             "enabled": True,
