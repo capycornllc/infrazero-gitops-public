@@ -34,6 +34,7 @@ data:
     RESULT_SECRET="infisical-bootstrap-result"
     API_RETRIES="${API_RETRIES:-5}"
     API_RETRY_DELAY="${API_RETRY_DELAY:-2}"
+    CURL_INSECURE="${INFISICAL_BOOTSTRAP_CURL_INSECURE:--k}"
     ALLOWED_AUDIENCE="${INFISICAL_ALLOWED_AUDIENCE:-infisical}"
     KUBE_HOST="https://kubernetes.default.svc"
     
@@ -179,9 +180,9 @@ data:
       while true; do
         tmp=$(mktemp)
         if [ -n "$data" ]; then
-          status=$(curl -sS -o "$tmp" -w "%{http_code}" -X "$method" -H "Authorization: Bearer $INFISICAL_TOKEN" -H "Content-Type: application/json" --data "$data" "$url")
+          status=$(curl -sS $CURL_INSECURE -o "$tmp" -w "%{http_code}" -X "$method" -H "Authorization: Bearer $INFISICAL_TOKEN" -H "Content-Type: application/json" --data "$data" "$url" || true)
         else
-          status=$(curl -sS -o "$tmp" -w "%{http_code}" -X "$method" -H "Authorization: Bearer $INFISICAL_TOKEN" "$url")
+          status=$(curl -sS $CURL_INSECURE -o "$tmp" -w "%{http_code}" -X "$method" -H "Authorization: Bearer $INFISICAL_TOKEN" "$url" || true)
         fi
         API_STATUS="$status"
         API_BODY=$(cat "$tmp")
